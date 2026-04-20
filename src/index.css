@@ -1,0 +1,83 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --sidebar-width: 220px;
+  --topbar-height: 52px;
+}
+
+@layer base {
+  * { box-sizing: border-box; }
+  body { @apply bg-slate-50 text-slate-800 antialiased; }
+
+  ::-webkit-scrollbar { width: 5px; height: 5px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { @apply bg-slate-200 rounded-full; }
+  ::-webkit-scrollbar-thumb:hover { @apply bg-slate-300; }
+}
+
+@layer components {
+  .sidebar-item {
+    @apply flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm text-slate-500
+           hover:bg-slate-100 hover:text-slate-800 transition-colors cursor-pointer select-none;
+  }
+  .sidebar-item.active {
+    @apply bg-brand-50 text-brand-700 font-medium;
+  }
+
+  .card {
+    @apply bg-white border border-slate-200 rounded-xl p-4;
+  }
+
+  .badge {
+    @apply inline-flex items-center px-2 py-0.5 rounded text-xs font-medium;
+  }
+  .badge-green  { @apply bg-emerald-50 text-emerald-700; }
+  .badge-red    { @apply bg-red-50 text-red-600; }
+  .badge-blue   { @apply bg-blue-50 text-blue-700; }
+  .badge-amber  { @apply bg-amber-50 text-amber-700; }
+  .badge-slate  { @apply bg-slate-100 text-slate-500; }
+
+  .btn {
+    @apply inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium
+           border border-slate-200 bg-white text-slate-700
+           hover:bg-slate-50 active:scale-95 transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed;
+  }
+  .btn-primary { @apply bg-brand-600 text-white border-brand-600 hover:bg-brand-700; }
+  .btn-danger  { @apply bg-red-50 text-red-600 border-red-100 hover:bg-red-100; }
+  .btn-success { @apply bg-emerald-50 text-emerald-700 border-emerald-100 hover:bg-emerald-100; }
+
+  .form-label { @apply block text-xs text-slate-500 mb-1; }
+  .form-input {
+    @apply w-full px-3 py-2 text-sm border border-slate-200 rounded-lg bg-white
+           placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-brand-500/20
+           focus:border-brand-400 transition;
+  }
+
+  .table-th {
+    @apply text-left text-xs text-slate-400 font-medium uppercase tracking-wide
+           px-3 py-2.5 border-b border-slate-100 whitespace-nowrap;
+  }
+  .table-td {
+    @apply px-3 py-2.5 text-sm text-slate-700 border-b border-slate-50 align-middle;
+  }
+}
+
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(6px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.animate-fade-up { animation: fadeUp 0.3s ease-out both; }
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+.modal-overlay { animation: fadeIn 0.15s ease-out; }
+
+@keyframes slideUp {
+  from { opacity: 0; transform: translateY(10px) scale(0.98); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+.modal-panel { animation: slideUp 0.18s ease-out; }
