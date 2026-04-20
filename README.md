@@ -1,102 +1,105 @@
-# Nexus — Esports Team Management
+A modern, role-based esports management dashboard built for teams, managers, and players.
 
-Vite + React + Supabase + Tailwind CSS. Deploy ke Vercel gratis.
+## Overview
+
+NOCTIS X KING is a web-based management platform designed for esports organizations. It provides a centralized system for overseeing teams, rosters, tournaments, and player activity — all under a single role-based authentication flow.
 
 ---
 
-## Setup lokal
+## Features
+
+- **Multi-role dashboard** — Separate views and permissions for Super Admin, Team Manager, Staff, and Player
+- **Team management** — Roster handling, match scheduling, and tournament tracking
+- **Player dashboard** — Personal stats, match history, and activity log
+- **Analytics** — Performance charts powered by Recharts
+- **Audit log** — Full activity tracking for administrative oversight
+- **Reusable UI system** — Modular components including modal, toast, badge, KPI card, and data table
+
+---
+
+## Tech Stack
+
+| Layer | Technology |
+|---|---|
+| Frontend | React 18, React Router v6 |
+| Styling | Tailwind CSS v3 |
+| Backend / Database | Supabase (Auth + PostgreSQL) |
+| Charts | Recharts |
+| Icons | Lucide React |
+| Build Tool | Vite 5 |
+| Deployment | Vercel |
+
+---
+
+## Getting Started
 
 ```bash
-# 1. Install dependencies
+# Install dependencies
 npm install
 
-# 2. Isi environment variables
-# Buka file .env lalu isi VITE_SUPABASE_URL dan VITE_SUPABASE_ANON_KEY
-# Ambil dari: supabase.com > project kamu > Settings > API
+# Configure environment variables
+cp .env.example .env
 
-# 3. Jalankan dev server
+# Start development server
 npm run dev
 ```
 
-Buka http://localhost:5173
+See `.env.example` for required environment variables.
 
 ---
 
-## Deploy ke Vercel
-
-1. Push project ke GitHub
-2. Buka vercel.com > New Project > import repo
-3. Tambahkan environment variables di Vercel dashboard:
-   - `VITE_SUPABASE_URL`
-   - `VITE_SUPABASE_ANON_KEY`
-4. Deploy
-
-File `vercel.json` sudah dikonfigurasi untuk SPA routing — tidak perlu setting tambahan.
-
----
-
-## Environment variables
-
-Edit file `.env` (sudah tersedia, tinggal isi):
-
-```
-VITE_SUPABASE_URL=https://your-project-id.supabase.co
-VITE_SUPABASE_ANON_KEY=your-anon-key-here
-```
-
-Ambil dari Supabase dashboard: Settings > API > Project URL + anon key.
-
-File `.env` sudah ada di `.gitignore` — tidak akan ikut ke GitHub.
-Untuk Vercel, tambahkan manual di project settings.
-
----
-
-## Struktur project
+## Project Structure
 
 ```
 src/
-├── App.jsx                        # Router utama
+├── App.jsx
 ├── main.jsx
-├── index.css                      # Tailwind + custom classes
+├── index.css
 ├── lib/
-│   ├── supabase.js                # Supabase client
-│   └── scraper.js                 # Tournament scraping utility
+│   ├── supabase.js
+│   └── scraper.js
 ├── hooks/
-│   ├── useAuth.js                 # Auth state + role
-│   ├── useRole.js                 # Role permission helpers
-│   └── useToast.js                # Toast notification state
+│   ├── useAuth.js
+│   ├── useRole.js
+│   └── useToast.js
 ├── router/
-│   └── ProtectedRoute.jsx         # Auth guard
+│   └── ProtectedRoute.jsx
 ├── components/
-│   ├── layout/                    # Sidebar, Topbar, DashboardLayout
-│   ├── ui/                        # Modal, Button, Badge, KpiCard, DataTable, Toast
-│   └── super-admin/               # DeactivateModal
+│   ├── layout/
+│   ├── ui/
+│   └── super-admin/
 └── pages/
-    ├── auth/LoginPage.jsx
+    ├── auth/
     └── dashboard/
-        ├── super-admin/           # Overview, Teams, Users, Audit, Settings
-        ├── team-manager/          # Dashboard, Roster, Matches, Tournaments, Analytics
-        └── player/                # Dashboard, History, Tournaments, Activity
+        ├── super-admin/
+        ├── team-manager/
+        └── player/
 ```
 
 ---
 
 ## Roles
 
-| Role | Route awal | Keterangan |
-|---|---|---|
-| `super_admin` | `/super-admin` | Full control, deactivate tim, audit log |
-| `team_manager` | `/team-manager` | Kelola tim sendiri |
-| `staff` | `/team-manager` | Bantu team manager |
-| `player` | `/player` | Lihat stats, log aktivitas |
-
-Semua role login di halaman yang sama: `/login`
+| Role | Access |
+|---|---|
+| `super_admin` | Full control — teams, users, audit log, and global settings |
+| `team_manager` | Manage roster, matches, and tournaments for their own team |
+| `staff` | Operational support within team manager scope |
+| `player` | Personal stats, match history, and tournament schedule |
 
 ---
 
-## Database
+## Scripts
 
-Jalankan SQL dari `supabase/schema.sql` di Supabase SQL editor untuk membuat tabel.
-Jalankan `supabase/seed.sql` untuk membuat akun Super Admin pertama.
+```bash
+npm run dev       # Start development server
+npm run build     # Build for production
+npm run preview   # Preview production build
+npm run lint      # Run ESLint
+```
 
-(File schema dan seed menyusul di sprint database.)
+---
+
+## License
+
+© NOCTIS X KING Esports. All rights reserved.
