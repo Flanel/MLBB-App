@@ -1,19 +1,25 @@
+import { useState, useEffect } from 'react'
 import DashboardLayout from '@/components/layout/DashboardLayout'
+import { supabase } from '@/lib/supabase'
+import { format } from 'date-fns'
 
-const LOGS = [
-  { user: 'Rafi A.',    role: 'super_admin',  action: 'Viewed team details',      target: 'Phantom Five',               date: 'Today',     time: '10:42' },
-  { user: 'Hendra K.', role: 'team_manager', action: 'Added match result',        target: 'ML Weekly #24',              date: 'Today',     time: '10:18' },
-  { user: 'Reza P.',   role: 'player',       action: 'Updated activity log',      target: 'Personal',                   date: 'Today',     time: '09:55' },
-  { user: 'Dito S.',   role: 'player',       action: 'Updated activity log',      target: 'Personal',                   date: 'Today',     time: '09:30' },
-  { user: 'Hendra K.', role: 'team_manager', action: 'Imported tournament',       target: 'MDL Season 8',               date: 'Yesterday', time: '18:02' },
-  { user: 'Hendra K.', role: 'team_manager', action: 'Scraping job triggered',    target: 'challonge.com/ml-weekly-24', date: 'Yesterday', time: '17:58' },
-  { user: 'Rafi A.',   role: 'super_admin',  action: 'Reset user password',       target: 'Dito S.',                    date: 'Yesterday', time: '15:30' },
-  { user: 'Aldo F.',   role: 'player',       action: 'Viewed match history',      target: 'Personal',                   date: 'Yesterday', time: '14:10' },
-]
-const ROLE_BADGE  = { super_admin: 'badge-red', team_manager: 'badge-blue', staff: 'badge-amber', player: 'badge-slate' }
-const ROLE_LABELS = { super_admin: 'Super Admin', team_manager: 'Team Manager', staff: 'Staff', player: 'Player' }
+const ROLE_BADGE  = { super_admin:'badge-red', team_manager:'badge-blue', staff:'badge-amber', player:'badge-slate' }
+const ROLE_LABELS = { super_admin:'Super Admin', team_manager:'Team Manager', staff:'Staff', player:'Player' }
 
 export default function AuditPage() {
+  const [logs, setLogs]       = useState([])
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    supabase.from('audit_logs')
+      .select('*, users(name, role)')
+      .order('created_at', { ascending: false })
+      .limit(100)
+      .then(({ data }) => { setLogs(data || []); setLoading(false) })
+  }, [])
+
+  if (loading) return <DashboardLayout title="Audit Log"><p className="text-sm text-slate-400 mt-4">Loading...</p></DashboardLayout>
+
   return (
     <DashboardLayout title="Audit Log">
       <h2 className="text-base font-semibold text-slate-800 mb-0.5">Audit Log</h2>
@@ -26,23 +32,32 @@ export default function AuditPage() {
           </select>
           <button className="btn btn-primary text-xs ml-auto">Export CSV</button>
         </div>
-        <table className="w-full">
-          <thead>
-            <tr>{['User', 'Role', 'Action', 'Target', 'Date', 'Time'].map(h => <th key={h} className="table-th">{h}</th>)}</tr>
-          </thead>
-          <tbody>
-            {LOGS.map((log, i) => (
-              <tr key={i} className="hover:bg-slate-50">
-                <td className="table-td font-medium">{log.user}</td>
-                <td className="table-td"><span className={`badge ${ROLE_BADGE[log.role]}`}>{ROLE_LABELS[log.role]}</span></td>
-                <td className="table-td">{log.action}</td>
-                <td className="table-td text-slate-400 max-w-[180px] truncate">{log.target}</td>
-                <td className="table-td text-slate-400">{log.date}</td>
-                <td className="table-td font-mono text-xs text-slate-400">{log.time}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+        {logs.length === 0
+          ? <p className="text-xs text-slate-400 py-6 text-center">No activity logged yet.</p>
+          : (
+            <table className="w-full">
+              <thead><tr>{['User','Role','Action','Target','Time'].map(h=><th key={h} className="table-th">{h}</th>)}</tr></thead>
+              <tbody>
+                {logs.map(log => (
+                  <tr key={log.id} className="hover:bg-slate-50">
+                    <td className="table-td font-medium">{log.users?.name || '—'}</td>
+                    <td className="table-td">
+                      {log.users?.role
+                        ? <span className={`badge ${ROLE_BADGE[log.users.role]}`}>{ROLE_LABELS[log.users.role]}</span>
+                        : <span className="text-slate-300">—</span>
+                      }
+                    </td>
+                    <td className="table-td">{log.action}</td>
+                    <td className="table-td text-slate-400 max-w-[180px] truncate">{log.target || '—'}</td>
+                    <td className="table-td font-mono text-xs text-slate-400">
+                      {format(new Date(log.created_at), 'd MMM, HH:mm')}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )
+        }
       </div>
     </DashboardLayout>
   )
