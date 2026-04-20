@@ -12,7 +12,7 @@ const navConfig = {
       { to: '/super-admin/teams',    label: 'Teams',     icon: Shield },
       { to: '/super-admin/users',    label: 'Users',     icon: Users },
     ]},
-    { group: 'Monitoring', items: [
+    { group: 'System', items: [
       { to: '/super-admin/audit',    label: 'Audit Log', icon: ClipboardList },
       { to: '/super-admin/settings', label: 'Settings',  icon: Settings },
     ]},
@@ -51,67 +51,147 @@ const navConfig = {
 }
 
 const roleLabels = {
-  super_admin: 'Super Admin', team_manager: 'Team Manager',
-  staff: 'Staff', player: 'Player',
+  super_admin: 'Super Admin',
+  team_manager: 'Team Manager',
+  staff: 'Staff',
+  player: 'Player',
+}
+
+// NXK crown logo mark — SVG inline
+function NXKMark({ size = 22 }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 28 28" fill="none">
+      {/* Crown points */}
+      <path
+        d="M4 18L7 10L11 15L14 7L17 15L21 10L24 18H4Z"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.5"
+        strokeLinejoin="round"
+      />
+      {/* Base */}
+      <path
+        d="M4 18H24V20H4V18Z"
+        fill="currentColor"
+        opacity="0.4"
+      />
+      {/* Red gem */}
+      <circle cx="14" cy="7" r="2" fill="#e11d48" />
+    </svg>
+  )
 }
 
 export default function Sidebar() {
   const { user, role, signOut } = useAuth()
-  const groups = navConfig[role] || navConfig[role] || []
+  const groups = navConfig[role] || []
+  const initials = (user?.email || 'NK').slice(0, 2).toUpperCase()
 
   return (
-    <aside className="flex flex-col h-full bg-white border-r border-slate-200 flex-shrink-0" style={{ width: 'var(--sidebar-width)' }}>
+    <aside
+      className="flex flex-col h-full flex-shrink-0"
+      style={{
+        width: 'var(--sidebar-width)',
+        background: '#0c0d18',
+        borderRight: '1px solid #1e2135',
+      }}
+    >
       {/* Logo */}
-      <div className="flex items-center gap-2.5 px-4 py-3.5 border-b border-slate-100">
-        <div className="w-7 h-7 rounded-lg bg-brand-600 flex items-center justify-center flex-shrink-0">
-          <svg width="14" height="14" viewBox="0 0 20 20" fill="none">
-            <path d="M10 2L17 6V14L10 18L3 14V6L10 2Z" stroke="white" strokeWidth="1.8" fill="none"/>
-            <path d="M10 6L14 8.5V13.5L10 16L6 13.5V8.5L10 6Z" fill="white" fillOpacity="0.45"/>
-          </svg>
+      <div
+        className="flex items-center gap-2.5 px-4 py-4 flex-shrink-0"
+        style={{ borderBottom: '1px solid #1a1d30' }}
+      >
+        <div
+          className="flex items-center justify-center flex-shrink-0 text-slate-800"
+          style={{
+            width: 30,
+            height: 30,
+            borderRadius: 8,
+            background: 'linear-gradient(135deg, #1e2135 0%, #161828 100%)',
+            border: '1px solid #252840',
+          }}
+        >
+          <NXKMark size={18} />
         </div>
-        <span className="font-semibold text-slate-800 tracking-tight">Nexus</span>
+        <div>
+          <p
+            className="text-xs font-bold leading-none tracking-widest uppercase"
+            style={{ fontFamily: 'Syne, sans-serif', color: '#dde0ef', letterSpacing: '0.1em' }}
+          >
+            NXK
+          </p>
+          <p className="text-[9px] leading-none mt-0.5" style={{ color: '#555a78', letterSpacing: '0.05em' }}>
+            ESPORTS
+          </p>
+        </div>
       </div>
 
-      {/* Nav */}
-      <nav className="flex-1 overflow-y-auto px-2.5 py-3 space-y-4">
+      {/* Navigation */}
+      <nav className="flex-1 overflow-y-auto px-2.5 py-3 space-y-5">
         {groups.map(group => (
           <div key={group.group}>
-            <p className="text-[10px] font-medium text-slate-400 uppercase tracking-widest px-2 mb-1">
+            <p
+              className="text-[9px] font-semibold uppercase tracking-widest px-3 mb-1.5"
+              style={{ fontFamily: 'Syne, sans-serif', color: '#3a3f5c', letterSpacing: '0.12em' }}
+            >
               {group.group}
             </p>
-            {group.items.map(item => {
-              const Icon = item.icon
-              return (
-                <NavLink
-                  key={item.to}
-                  to={item.to}
-                  end
-                  className={({ isActive }) => `sidebar-item${isActive ? ' active' : ''}`}
-                >
-                  <Icon size={14} className="flex-shrink-0" />
-                  {item.label}
-                </NavLink>
-              )
-            })}
+            <div className="space-y-0.5">
+              {group.items.map(item => {
+                const Icon = item.icon
+                return (
+                  <NavLink
+                    key={item.to}
+                    to={item.to}
+                    end
+                    className={({ isActive }) => `sidebar-item${isActive ? ' active' : ''}`}
+                  >
+                    <Icon size={14} className="flex-shrink-0" strokeWidth={1.75} />
+                    <span style={{ fontFamily: 'DM Sans, sans-serif' }}>{item.label}</span>
+                  </NavLink>
+                )
+              })}
+            </div>
           </div>
         ))}
       </nav>
 
-      {/* Footer */}
-      <div className="px-3 py-3 border-t border-slate-100 flex items-center gap-2.5">
-        <div className="w-7 h-7 rounded-full bg-brand-100 flex items-center justify-center text-[10px] font-semibold text-brand-700 flex-shrink-0 uppercase">
-          {user?.email?.slice(0, 2) || 'NA'}
+      {/* User footer */}
+      <div
+        className="px-3 py-3 flex items-center gap-2.5 flex-shrink-0"
+        style={{ borderTop: '1px solid #1a1d30' }}
+      >
+        <div
+          className="flex items-center justify-center flex-shrink-0 text-xs font-bold"
+          style={{
+            width: 28,
+            height: 28,
+            borderRadius: 8,
+            background: 'rgba(225, 29, 72, 0.15)',
+            color: '#fb4c6c',
+            fontFamily: 'Syne, sans-serif',
+            fontSize: 10,
+            border: '1px solid rgba(225, 29, 72, 0.2)',
+          }}
+        >
+          {initials}
         </div>
         <div className="flex-1 min-w-0">
-          <p className="text-xs font-medium text-slate-700 truncate">{user?.email}</p>
-          <p className="text-[10px] text-slate-400">{roleLabels[role] || role}</p>
+          <p className="text-xs font-medium truncate" style={{ color: '#c2c5d8' }}>
+            {user?.email}
+          </p>
+          <p className="text-[10px]" style={{ color: '#555a78' }}>
+            {roleLabels[role] || role}
+          </p>
         </div>
         <button
           onClick={signOut}
           title="Sign out"
-          className="p-1.5 rounded-md text-slate-400 hover:text-red-500 hover:bg-red-50 transition-colors"
+          className="flex-shrink-0 p-1.5 rounded-md transition-colors"
+          style={{ color: '#3a3f5c' }}
+          onMouseEnter={e => { e.currentTarget.style.color = '#fb4c6c'; e.currentTarget.style.background = 'rgba(225,29,72,0.08)' }}
+          onMouseLeave={e => { e.currentTarget.style.color = '#3a3f5c'; e.currentTarget.style.background = 'transparent' }}
         >
-          <LogOut size={13} />
+          <LogOut size={13} strokeWidth={1.75} />
         </button>
       </div>
     </aside>

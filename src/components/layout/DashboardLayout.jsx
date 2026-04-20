@@ -7,11 +7,11 @@ export default function DashboardLayout({ children, title, subtitle }) {
   const { toasts, removeToast } = useToast()
 
   return (
-    <div className="flex h-screen overflow-hidden bg-slate-50">
+    <div className="flex h-screen overflow-hidden" style={{ background: '#080910' }}>
       <Sidebar />
       <div className="flex flex-col flex-1 overflow-hidden">
         <Topbar title={title} subtitle={subtitle} />
-        <main className="flex-1 overflow-y-auto p-5">
+        <main className="flex-1 overflow-y-auto p-5 animate-fade-up">
           {children}
         </main>
       </div>
