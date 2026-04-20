@@ -19,13 +19,16 @@ export default function DeactivateModal({ open, onClose, onConfirm, teamName, lo
       }
     >
       <div className="flex gap-3">
-        <div className="w-9 h-9 rounded-full bg-red-50 flex items-center justify-center flex-shrink-0 mt-0.5">
-          <AlertTriangle size={15} className="text-red-500" />
+        <div
+          className="w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5"
+          style={{ background: 'rgba(245,158,11,0.1)' }}
+        >
+          <AlertTriangle size={14} style={{ color: '#fbbf24' }} />
         </div>
-        <div className="space-y-2 text-sm text-slate-600">
-          <p>You are about to deactivate <strong className="text-slate-800">{teamName}</strong>.</p>
-          <p>All members will be immediately blocked from logging in. Team data is preserved in read-only mode and can be restored at any time.</p>
-          <p className="text-xs text-slate-400 pt-1">This action can be undone from the Teams page.</p>
+        <div className="space-y-2 text-sm" style={{ color: '#a0a4be' }}>
+          <p>You are about to deactivate <strong style={{ color: '#dde0ef' }}>{teamName}</strong>.</p>
+          <p>All members will be immediately blocked from logging in. Team data is preserved and can be restored at any time.</p>
+          <p className="text-xs pt-1" style={{ color: '#555a78' }}>This action can be undone from this page.</p>
         </div>
       </div>
     </Modal>
