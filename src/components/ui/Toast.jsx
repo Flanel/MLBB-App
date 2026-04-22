@@ -1,61 +1,37 @@
-import { X } from 'lucide-react'
+import { useEffect } from 'react'
+import { CheckCircle, XCircle, AlertTriangle, X } from 'lucide-react'
 
-const styles = {
-  success: {
-    background: 'rgba(16, 185, 129, 0.1)',
-    border: '1px solid rgba(16, 185, 129, 0.2)',
-    color: '#34d399',
-  },
-  danger: {
-    background: 'rgba(225, 29, 72, 0.1)',
-    border: '1px solid rgba(225, 29, 72, 0.2)',
-    color: '#fb4c6c',
-  },
-  info: {
-    background: 'rgba(59, 130, 246, 0.1)',
-    border: '1px solid rgba(59, 130, 246, 0.2)',
-    color: '#60a5fa',
-  },
-  warning: {
-    background: 'rgba(245, 158, 11, 0.1)',
-    border: '1px solid rgba(245, 158, 11, 0.2)',
-    color: '#fbbf24',
-  },
+const CONFIG = {
+  success: { icon: CheckCircle, color: 'var(--green)',  bg: 'var(--green-bg)' },
+  danger:  { icon: XCircle,     color: 'var(--red)',    bg: 'var(--red-bg)'   },
+  warning: { icon: AlertTriangle,color:'var(--amber)',  bg: 'var(--amber-bg)' },
 }
 
-function ToastItem({ toast, onRemove }) {
-  const style = styles[toast.type] || styles.info
+function Toast({ id, message, type = 'success', onRemove }) {
+  const cfg = CONFIG[type] || CONFIG.success
+  const Icon = cfg.icon
+
+  useEffect(() => {
+    const t = setTimeout(() => onRemove(id), 4000)
+    return () => clearTimeout(t)
+  }, [id, onRemove])
+
   return (
-    <div
-      className="flex items-start gap-3 px-4 py-3 rounded-xl text-sm animate-fade-up"
-      style={{
-        ...style,
-        backdropFilter: 'blur(12px)',
-        minWidth: 260,
-        maxWidth: 360,
-        boxShadow: '0 8px 32px rgba(0,0,0,0.4)',
-      }}
-    >
-      <span className="flex-1 leading-relaxed">{toast.message}</span>
-      <button
-        onClick={() => onRemove(toast.id)}
-        className="flex-shrink-0 mt-0.5 opacity-50 hover:opacity-100 transition-opacity"
-        style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'inherit' }}
-      >
-        <X size={13} strokeWidth={1.75} />
+    <div className="animate-fade-up" style={{ display:'flex', alignItems:'center', gap:10, padding:'10px 14px', borderRadius:10, background:'var(--bg-elevated)', border:`1px solid ${cfg.color}30`, boxShadow:'0 8px 32px rgba(0,0,0,0.4)', minWidth:260, maxWidth:360 }}>
+      <Icon size={14} style={{ color: cfg.color, flexShrink:0 }} />
+      <p style={{ flex:1, fontSize:12, color:'var(--text-primary)', lineHeight:1.4 }}>{message}</p>
+      <button onClick={() => onRemove(id)} style={{ background:'transparent', border:'none', color:'var(--text-muted)', cursor:'pointer', padding:2, flexShrink:0 }}>
+        <X size={12} />
       </button>
     </div>
   )
 }
 
 export default function ToastContainer({ toasts, onRemove }) {
+  if (!toasts?.length) return null
   return (
-    <div className="fixed bottom-4 right-4 z-[60] flex flex-col gap-2 pointer-events-none">
-      {toasts.map(t => (
-        <div key={t.id} className="pointer-events-auto">
-          <ToastItem toast={t} onRemove={onRemove} />
-        </div>
-      ))}
+    <div style={{ position:'fixed', bottom:20, right:20, zIndex:100, display:'flex', flexDirection:'column', gap:8 }}>
+      {toasts.map(t => <Toast key={t.id} {...t} onRemove={onRemove} />)}
     </div>
   )
 }

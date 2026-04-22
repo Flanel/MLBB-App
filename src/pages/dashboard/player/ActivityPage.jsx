@@ -5,106 +5,108 @@ import { useAuth } from '@/hooks/useAuth'
 import { useToast } from '@/hooks/useToast'
 import { format } from 'date-fns'
 
-const TYPES = ['Team scrim', 'Solo rank', 'Review / VOD', 'Physical training', 'Other']
-const DOT_COLOR = {
-  'Team scrim':        'bg-brand-400',
-  'Solo rank':         'bg-emerald-400',
-  'Review / VOD':      'bg-amber-400',
-  'Physical training': 'bg-rose-400',
-  'Other':             'bg-slate-300',
+const TYPES = ['Team Scrim', 'Solo Rank', 'Review / VOD', 'Physical Training', 'Other']
+const DOT = {
+  'Team Scrim':        'var(--ocean-400)',
+  'Solo Rank':         'var(--green)',
+  'Review / VOD':      'var(--amber)',
+  'Physical Training': 'var(--red)',
+  'Other':             'var(--text-muted)',
 }
 
 export default function ActivityPage() {
   const { user } = useAuth()
   const { addToast } = useToast()
-  const [form, setForm]   = useState({ type: 'Team scrim', duration: '', note: '' })
-  const [feed, setFeed]   = useState([])
+  const [form, setForm]     = useState({ type:'Team Scrim', duration:'', note:'' })
+  const [feed, setFeed]     = useState([])
   const [saving, setSaving] = useState(false)
 
   useEffect(() => {
     if (!user) return
-    supabase.from('player_activities')
-      .select('*')
-      .eq('user_id', user.id)
-      .order('logged_at', { ascending: false })
-      .limit(10)
+    supabase.from('player_activities').select('*').eq('user_id', user.id).order('logged_at', { ascending:false }).limit(15)
       .then(({ data }) => setFeed(data || []))
   }, [user])
 
   async function handleSave(e) {
     e.preventDefault()
-    if (!user) return
+    if (!form.duration) return
     setSaving(true)
-
     const { data, error } = await supabase.from('player_activities').insert({
-      user_id:          user.id,
-      activity_type:    form.type,
-      duration_minutes: parseInt(form.duration),
-      notes:            form.note || null,
+      user_id: user.id, activity_type: form.type,
+      duration_minutes: parseInt(form.duration), notes: form.note || null,
     }).select().single()
-
-    if (error) {
-      addToast({ message: 'Failed to save activity.', type: 'danger' })
-    } else {
-      setFeed(prev => [data, ...prev])
-      addToast({ message: 'Activity logged.', type: 'success' })
-      setForm(f => ({ ...f, duration: '', note: '' }))
-    }
+    if (error) addToast({ message:'Gagal menyimpan.', type:'danger' })
+    else { setFeed(prev => [data, ...prev]); addToast({ message:'Aktivitas dicatat.', type:'success' }); setForm(f => ({...f, duration:'', note:''})) }
     setSaving(false)
   }
 
+  const totalMin = feed.reduce((s, x) => s + (x.duration_minutes || 0), 0)
+  const hrs = Math.floor(totalMin / 60)
+  const mins = totalMin % 60
+
   return (
     <DashboardLayout title="Activity Log">
-      <h2 className="text-base font-semibold text-slate-800 mb-0.5">Activity Log</h2>
-      <p className="text-xs text-slate-400 mb-4">Your personal training and activity records.</p>
-      <div className="grid grid-cols-2 gap-4">
+      <div style={{ marginBottom:20 }}>
+        <h2 style={{ fontFamily:'Syne,sans-serif', fontSize:15, fontWeight:700, color:'var(--text-primary)', marginBottom:3 }}>Activity Log</h2>
+        <p style={{ fontSize:12, color:'var(--text-muted)' }}>Catat latihan pribadi dan aktivitas harianmu.</p>
+      </div>
+
+      <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:16 }}>
+        {/* Log form */}
         <div className="card">
-          <p className="text-xs font-medium text-slate-500 uppercase tracking-wide mb-3">Log today</p>
-          <form onSubmit={handleSave} className="space-y-3">
+          <p style={{ fontSize:10, fontWeight:600, textTransform:'uppercase', letterSpacing:'0.08em', color:'var(--text-dim)', marginBottom:14, fontFamily:'Syne,sans-serif' }}>Catat Hari Ini</p>
+          <form onSubmit={handleSave} style={{ display:'flex', flexDirection:'column', gap:12 }}>
             <div>
-              <label className="form-label">Activity type</label>
+              <label className="form-label">Tipe Aktivitas</label>
               <select className="form-input" value={form.type} onChange={e=>setForm(f=>({...f,type:e.target.value}))}>
-                {TYPES.map(t=><option key={t}>{t}</option>)}
+                {TYPES.map(t => <option key={t}>{t}</option>)}
               </select>
             </div>
             <div>
-              <label className="form-label">Duration (minutes)</label>
+              <label className="form-label">Durasi (menit)</label>
               <input type="number" min="1" className="form-input" placeholder="e.g. 90" value={form.duration} onChange={e=>setForm(f=>({...f,duration:e.target.value}))} required />
             </div>
             <div>
-              <label className="form-label">Notes (optional)</label>
-              <textarea className="form-input resize-none" rows={3} placeholder="What did you work on?" value={form.note} onChange={e=>setForm(f=>({...f,note:e.target.value}))} />
+              <label className="form-label">Catatan (opsional)</label>
+              <textarea className="form-input" rows={3} placeholder="Apa yang kamu kerjakan?" value={form.note} onChange={e=>setForm(f=>({...f,note:e.target.value}))} />
             </div>
-            <button type="submit" className="btn btn-primary w-full justify-center" disabled={saving}>
-              {saving ? 'Saving...' : 'Save activity'}
+            <button type="submit" className="btn btn-primary" style={{ justifyContent:'center' }} disabled={saving}>
+              {saving ? 'Menyimpan...' : 'Simpan Aktivitas'}
             </button>
           </form>
+
+          {/* Total hours */}
+          {feed.length > 0 && (
+            <div style={{ marginTop:16, padding:'12px 14px', background:'var(--bg-elevated)', borderRadius:10, border:'1px solid var(--border-2)' }}>
+              <p style={{ fontSize:10, color:'var(--text-dim)', textTransform:'uppercase', letterSpacing:'0.06em' }}>Total Tercatat</p>
+              <p style={{ fontSize:20, fontWeight:700, fontFamily:'IBM Plex Mono,monospace', color:'var(--ocean-300)', marginTop:4 }}>{hrs}j {mins}m</p>
+              <p style={{ fontSize:11, color:'var(--text-dim)', marginTop:2 }}>dari {feed.length} sesi</p>
+            </div>
+          )}
         </div>
 
+        {/* Feed */}
         <div className="card">
-          <p className="text-xs font-medium text-slate-500 uppercase tracking-wide mb-3">Recent activity</p>
-          {feed.length === 0
-            ? <p className="text-xs text-slate-400">No activities logged yet.</p>
-            : (
-              <div className="space-y-4">
-                {feed.map(item => (
-                  <div key={item.id} className="flex gap-3">
-                    <span className={`w-2 h-2 rounded-full mt-1.5 flex-shrink-0 ${DOT_COLOR[item.activity_type]||'bg-slate-300'}`} />
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-baseline gap-2">
-                        <span className="text-sm font-medium text-slate-700">{item.activity_type}</span>
-                        <span className="text-xs text-slate-400">{item.duration_minutes} min</span>
-                      </div>
-                      {item.notes && <p className="text-xs text-slate-500 mt-0.5 leading-relaxed">{item.notes}</p>}
-                      <p className="text-[10px] text-slate-300 mt-1">
-                        {format(new Date(item.logged_at), 'd MMM, HH:mm')}
-                      </p>
+          <p style={{ fontSize:10, fontWeight:600, textTransform:'uppercase', letterSpacing:'0.08em', color:'var(--text-dim)', marginBottom:14, fontFamily:'Syne,sans-serif' }}>Riwayat Aktivitas</p>
+          {feed.length === 0 ? (
+            <p style={{ fontSize:12, color:'var(--text-dim)', textAlign:'center', padding:'24px 0' }}>Belum ada aktivitas dicatat.</p>
+          ) : (
+            <div style={{ display:'flex', flexDirection:'column', gap:12 }}>
+              {feed.map(item => (
+                <div key={item.id} style={{ display:'flex', gap:12 }}>
+                  <span style={{ width:8, height:8, borderRadius:'50%', background: DOT[item.activity_type] || 'var(--text-muted)', marginTop:5, flexShrink:0 }} />
+                  <div style={{ flex:1, minWidth:0 }}>
+                    <div style={{ display:'flex', justifyContent:'space-between', alignItems:'baseline', gap:8 }}>
+                      <span style={{ fontSize:13, fontWeight:500, color:'var(--text-primary)' }}>{item.activity_type}</span>
+                      <span style={{ fontSize:12, color:'var(--text-muted)', flexShrink:0 }}>{item.duration_minutes} mnt</span>
                     </div>
+                    {item.notes && <p style={{ fontSize:11, color:'var(--text-muted)', marginTop:2, lineHeight:1.4 }}>{item.notes}</p>}
+                    <p style={{ fontSize:10, color:'var(--text-dim)', marginTop:3 }}>{format(new Date(item.logged_at), 'd MMM, HH:mm')}</p>
                   </div>
-                ))}
-              </div>
-            )
-          }
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       </div>
     </DashboardLayout>

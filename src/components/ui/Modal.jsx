@@ -1,70 +1,43 @@
 import { useEffect } from 'react'
 import { X } from 'lucide-react'
 
+const SIZES = { sm:'380px', md:'480px', lg:'600px', xl:'720px' }
+
 export default function Modal({ open, onClose, title, children, footer, size = 'md' }) {
   useEffect(() => {
     if (!open) return
-    const handler = (e) => { if (e.key === 'Escape') onClose() }
+    const handler = e => { if (e.key === 'Escape') onClose() }
     window.addEventListener('keydown', handler)
     document.body.style.overflow = 'hidden'
-    return () => {
-      window.removeEventListener('keydown', handler)
-      document.body.style.overflow = ''
-    }
+    return () => { window.removeEventListener('keydown', handler); document.body.style.overflow = '' }
   }, [open, onClose])
 
   if (!open) return null
 
-  const sizes = { sm: 'max-w-sm', md: 'max-w-md', lg: 'max-w-lg', xl: 'max-w-xl' }
-
   return (
-    <div
-      className="modal-overlay fixed inset-0 z-50 flex items-center justify-center px-4"
-      style={{ background: 'rgba(0, 0, 0, 0.7)' }}
-      onClick={(e) => { if (e.target === e.currentTarget) onClose() }}
+    <div className="modal-overlay" style={{ position:'fixed', inset:0, zIndex:50, display:'flex', alignItems:'center', justifyContent:'center', padding:'0 16px', background:'rgba(0,0,0,0.75)' }}
+      onClick={e => { if (e.target === e.currentTarget) onClose() }}
     >
-      <div
-        role="dialog"
-        aria-modal="true"
-        className={`modal-panel w-full ${sizes[size]}`}
-        style={{
-          background: '#13141f',
-          border: '1px solid #252840',
-          borderRadius: 12,
-          padding: '20px',
-          boxShadow: '0 24px 64px rgba(0,0,0,0.6)',
-        }}
+      <div role="dialog" aria-modal="true" className="modal-panel"
+        style={{ width:'100%', maxWidth: SIZES[size] || SIZES.md, background:'var(--bg-surface)', border:'1px solid var(--border-2)', borderRadius:14, padding:'20px', boxShadow:'0 32px 80px rgba(0,0,0,0.7)' }}
       >
         {/* Header */}
-        <div className="flex items-start justify-between mb-4">
-          <h2
-            className="text-sm font-semibold"
-            style={{ color: '#dde0ef', fontFamily: 'Syne, sans-serif' }}
+        <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', marginBottom:16 }}>
+          <h2 style={{ fontFamily:'Syne,sans-serif', fontSize:14, fontWeight:600, color:'var(--text-primary)' }}>{title}</h2>
+          <button onClick={onClose} style={{ width:24, height:24, display:'flex', alignItems:'center', justifyContent:'center', borderRadius:6, background:'transparent', border:'none', color:'var(--text-muted)', cursor:'pointer', transition:'all 0.15s' }}
+            onMouseEnter={e => { e.currentTarget.style.background='var(--bg-hover)'; e.currentTarget.style.color='var(--text-secondary)' }}
+            onMouseLeave={e => { e.currentTarget.style.background='transparent'; e.currentTarget.style.color='var(--text-muted)' }}
           >
-            {title}
-          </h2>
-          <button
-            onClick={onClose}
-            className="flex items-center justify-center rounded-md transition-colors"
-            style={{ width: 24, height: 24, color: '#555a78', background: 'transparent', border: 'none', cursor: 'pointer' }}
-            onMouseEnter={e => { e.currentTarget.style.background = '#1e2135'; e.currentTarget.style.color = '#a0a4be' }}
-            onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = '#555a78' }}
-          >
-            <X size={14} strokeWidth={1.75} />
+            <X size={14} strokeWidth={1.75}/>
           </button>
         </div>
 
         {/* Body */}
-        <div className="text-sm leading-relaxed" style={{ color: '#a0a4be' }}>
-          {children}
-        </div>
+        <div style={{ fontSize:13, lineHeight:1.6, color:'var(--text-secondary)' }}>{children}</div>
 
         {/* Footer */}
         {footer && (
-          <div
-            className="flex justify-end gap-2 mt-5 pt-4"
-            style={{ borderTop: '1px solid #1e2135' }}
-          >
+          <div style={{ display:'flex', justifyContent:'flex-end', gap:8, marginTop:20, paddingTop:16, borderTop:'1px solid var(--border-1)' }}>
             {footer}
           </div>
         )}

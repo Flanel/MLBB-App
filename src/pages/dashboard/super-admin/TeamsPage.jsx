@@ -8,13 +8,9 @@ import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/hooks/useAuth'
 import { useToast } from '@/hooks/useToast'
 
-// ── helpers ─────────────────────────────────────────────────
-
 async function logAudit(userId, action, target) {
   await supabase.from('audit_logs').insert({ user_id: userId, action, target })
 }
-
-// ── component ───────────────────────────────────────────────
 
 export default function TeamsPage() {
   const { user } = useAuth()
@@ -23,57 +19,37 @@ export default function TeamsPage() {
   const [teams, setTeams]     = useState([])
   const [loading, setLoading] = useState(true)
   const [search, setSearch]   = useState('')
-  const [busy, setBusy]       = useState(false)   // any in-flight mutation
+  const [busy, setBusy]       = useState(false)
 
-  // modal states
   const [createOpen, setCreateOpen]   = useState(false)
-  const [editTarget, setEditTarget]   = useState(null)   // team object
-  const [deactTarget, setDeactTarget] = useState(null)   // team object
-  const [deleteTarget, setDeleteTarget] = useState(null) // team object
-
-  // ── data fetching ──────────────────────────────────────────
+  const [editTarget, setEditTarget]   = useState(null)
+  const [deactTarget, setDeactTarget] = useState(null)
+  const [deleteTarget, setDeleteTarget] = useState(null)
 
   const fetchTeams = useCallback(async () => {
     setLoading(true)
-
-    // DEBUG: join users count per team so we can show member numbers
     const { data, error } = await supabase
       .from('teams')
       .select('*, users(count)')
       .order('created_at', { ascending: false })
-
     if (error) {
-      addToast({ message: `Failed to load teams: ${error.message}`, type: 'danger' })
+      addToast({ message: `Gagal memuat tim: ${error.message}`, type: 'danger' })
     } else {
-      // flatten the count from Supabase's nested aggregate format
-      setTeams(
-        (data || []).map(t => ({
-          ...t,
-          member_count: t.users?.[0]?.count ?? 0,
-        }))
-      )
+      setTeams((data || []).map(t => ({ ...t, member_count: t.users?.[0]?.count ?? 0 })))
     }
     setLoading(false)
   }, [])
 
   useEffect(() => { fetchTeams() }, [fetchTeams])
 
-  // ── CRUD handlers ──────────────────────────────────────────
-
   async function handleCreate({ name, game }) {
     setBusy(true)
-    const { data, error } = await supabase
-      .from('teams')
-      .insert({ name, game, is_active: true })
-      .select()
-      .single()
-
-    if (error) {
-      addToast({ message: `Failed to create team: ${error.message}`, type: 'danger' })
-    } else {
+    const { data, error } = await supabase.from('teams').insert({ name, game, is_active: true }).select().single()
+    if (error) { addToast({ message: `Gagal: ${error.message}`, type: 'danger' }) }
+    else {
       setTeams(prev => [{ ...data, member_count: 0 }, ...prev])
-      await logAudit(user?.id, 'Created team', name)
-      addToast({ message: `Team "${name}" created.`, type: 'success' })
+      await logAudit(user?.id, 'Buat tim', name)
+      addToast({ message: `Tim "${name}" dibuat.`, type: 'success' })
       setCreateOpen(false)
     }
     setBusy(false)
@@ -81,17 +57,12 @@ export default function TeamsPage() {
 
   async function handleEdit({ name, game }) {
     setBusy(true)
-    const { error } = await supabase
-      .from('teams')
-      .update({ name, game })
-      .eq('id', editTarget.id)
-
-    if (error) {
-      addToast({ message: `Failed to update: ${error.message}`, type: 'danger' })
-    } else {
+    const { error } = await supabase.from('teams').update({ name, game }).eq('id', editTarget.id)
+    if (error) { addToast({ message: `Gagal: ${error.message}`, type: 'danger' }) }
+    else {
       setTeams(prev => prev.map(t => t.id === editTarget.id ? { ...t, name, game } : t))
-      await logAudit(user?.id, 'Edited team', name)
-      addToast({ message: `Team "${name}" updated.`, type: 'success' })
+      await logAudit(user?.id, 'Edit tim', name)
+      addToast({ message: `Tim "${name}" diperbarui.`, type: 'success' })
       setEditTarget(null)
     }
     setBusy(false)
@@ -99,258 +70,149 @@ export default function TeamsPage() {
 
   async function handleDeactivate() {
     setBusy(true)
-    const { error } = await supabase
-      .from('teams')
-      .update({ is_active: false })
-      .eq('id', deactTarget.id)
-
-    if (error) {
-      addToast({ message: `Failed to deactivate: ${error.message}`, type: 'danger' })
-    } else {
+    const { error } = await supabase.from('teams').update({ is_active: false }).eq('id', deactTarget.id)
+    if (error) { addToast({ message: `Gagal: ${error.message}`, type: 'danger' }) }
+    else {
       setTeams(prev => prev.map(t => t.id === deactTarget.id ? { ...t, is_active: false } : t))
-      await logAudit(user?.id, 'Deactivated team', deactTarget.name)
-      addToast({ message: `"${deactTarget.name}" deactivated. All members are blocked from login.`, type: 'success' })
+      await logAudit(user?.id, 'Nonaktifkan tim', deactTarget.name)
+      addToast({ message: `"${deactTarget.name}" dinonaktifkan. Semua member tidak bisa login.`, type: 'success' })
       setDeactTarget(null)
     }
     setBusy(false)
   }
 
   async function handleActivate(team) {
-    const { error } = await supabase
-      .from('teams')
-      .update({ is_active: true })
-      .eq('id', team.id)
-
-    if (error) {
-      addToast({ message: `Failed to activate: ${error.message}`, type: 'danger' })
-    } else {
+    const { error } = await supabase.from('teams').update({ is_active: true }).eq('id', team.id)
+    if (error) { addToast({ message: `Gagal: ${error.message}`, type: 'danger' }) }
+    else {
       setTeams(prev => prev.map(t => t.id === team.id ? { ...t, is_active: true } : t))
-      await logAudit(user?.id, 'Activated team', team.name)
-      addToast({ message: `"${team.name}" reactivated.`, type: 'success' })
+      await logAudit(user?.id, 'Aktifkan tim', team.name)
+      addToast({ message: `"${team.name}" diaktifkan kembali.`, type: 'success' })
     }
   }
 
   async function handleDelete() {
     setBusy(true)
-    // DEBUG: delete cascades to tournaments and matches via FK ON DELETE CASCADE
-    const { error } = await supabase
-      .from('teams')
-      .delete()
-      .eq('id', deleteTarget.id)
-
-    if (error) {
-      addToast({ message: `Failed to delete: ${error.message}`, type: 'danger' })
-    } else {
+    const { error } = await supabase.from('teams').delete().eq('id', deleteTarget.id)
+    if (error) { addToast({ message: `Gagal: ${error.message}`, type: 'danger' }) }
+    else {
       setTeams(prev => prev.filter(t => t.id !== deleteTarget.id))
-      await logAudit(user?.id, 'Deleted team', deleteTarget.name)
-      addToast({ message: `"${deleteTarget.name}" permanently deleted.`, type: 'success' })
+      await logAudit(user?.id, 'Hapus tim', deleteTarget.name)
+      addToast({ message: `"${deleteTarget.name}" dihapus permanen.`, type: 'success' })
       setDeleteTarget(null)
     }
     setBusy(false)
   }
 
-  // ── derived ────────────────────────────────────────────────
-
   const filtered = teams.filter(t =>
-    !search || t.name.toLowerCase().includes(search.toLowerCase()) || t.game.toLowerCase().includes(search.toLowerCase())
+    !search || t.name.toLowerCase().includes(search.toLowerCase()) || t.game?.toLowerCase().includes(search.toLowerCase())
   )
-
   const activeCount   = teams.filter(t => t.is_active).length
   const inactiveCount = teams.filter(t => !t.is_active).length
   const totalMembers  = teams.reduce((acc, t) => acc + Number(t.member_count), 0)
 
-  // ── render ─────────────────────────────────────────────────
-
   return (
     <DashboardLayout title="Teams">
-
-      {/* Page header */}
-      <div className="flex items-start justify-between mb-5">
+      <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', marginBottom:20 }}>
         <div>
-          <h2 className="text-base font-semibold mb-0.5" style={{ color: '#dde0ef', fontFamily: 'Syne, sans-serif' }}>
-            Teams
-          </h2>
-          <p className="text-xs" style={{ color: '#555a78' }}>
-            Create, configure, and manage team access.
-          </p>
+          <h2 style={{ fontFamily:'Syne,sans-serif', fontSize:15, fontWeight:700, color:'var(--text-primary)', marginBottom:3 }}>Teams</h2>
+          <p style={{ fontSize:12, color:'var(--text-muted)' }}>Buat, konfigurasi, dan kelola akses tim.</p>
         </div>
-        <button className="btn btn-primary text-xs" onClick={() => setCreateOpen(true)}>
-          + New team
-        </button>
+        <button className="btn btn-primary" onClick={() => setCreateOpen(true)}>+ Tim Baru</button>
       </div>
 
-      {/* KPI row */}
-      <div className="grid grid-cols-3 gap-3 mb-5">
+      {/* KPI */}
+      <div style={{ display:'grid', gridTemplateColumns:'repeat(3,1fr)', gap:12, marginBottom:20 }}>
         {[
-          { label: 'Total teams',    value: teams.length,   sub: 'registered' },
-          { label: 'Active',         value: activeCount,    sub: 'can login' },
-          { label: 'Total members',  value: totalMembers,   sub: 'across all teams' },
+          { label:'Total Tim', value: teams.length, sub:'terdaftar' },
+          { label:'Aktif', value: activeCount, sub:'bisa login' },
+          { label:'Total Member', value: totalMembers, sub:'semua tim' },
         ].map(k => (
           <div key={k.label} className="card animate-fade-up">
-            <p className="text-xs mb-1" style={{ color: '#555a78' }}>{k.label}</p>
-            <p className="text-2xl font-semibold font-mono" style={{ color: '#dde0ef' }}>{k.value}</p>
-            <p className="text-xs mt-1" style={{ color: '#3a3f5c' }}>{k.sub}</p>
+            <p style={{ fontSize:10, fontWeight:600, textTransform:'uppercase', letterSpacing:'0.08em', color:'var(--text-dim)', marginBottom:8, fontFamily:'Syne,sans-serif' }}>{k.label}</p>
+            <p style={{ fontSize:24, fontWeight:700, fontFamily:'IBM Plex Mono,monospace', color:'var(--text-primary)' }}>{k.value}</p>
+            <p style={{ fontSize:11, color:'var(--text-dim)', marginTop:4 }}>{k.sub}</p>
           </div>
         ))}
       </div>
 
-      {/* Table card */}
+      {/* Table */}
       <div className="card">
-
-        {/* Toolbar */}
-        <div className="flex items-center gap-3 mb-4">
-          <input
-            className="form-input max-w-[220px]"
-            placeholder="Search teams..."
-            value={search}
-            onChange={e => setSearch(e.target.value)}
-          />
-          <button
-            title="Refresh"
-            onClick={fetchTeams}
-            className="btn p-2"
-            style={{ padding: '7px' }}
-          >
-            <RefreshCw size={13} className={loading ? 'animate-spin' : ''} />
+        <div style={{ display:'flex', gap:10, marginBottom:16, flexWrap:'wrap', alignItems:'center' }}>
+          <input className="form-input" style={{ maxWidth:220 }} placeholder="Cari tim..." value={search} onChange={e=>setSearch(e.target.value)} />
+          <button className="btn" style={{ padding:'6px 10px' }} onClick={fetchTeams} title="Refresh">
+            <RefreshCw size={13} style={{ animation: loading ? 'spin 1s linear infinite' : 'none' }} />
           </button>
-          <div className="ml-auto flex items-center gap-2 text-xs" style={{ color: '#555a78' }}>
-            {inactiveCount > 0 && (
-              <span
-                className="badge"
-                style={{ background: 'rgba(245,158,11,0.1)', color: '#fbbf24' }}
-              >
-                {inactiveCount} inactive
-              </span>
-            )}
-            <span>{filtered.length} team{filtered.length !== 1 ? 's' : ''}</span>
+          <div style={{ marginLeft:'auto', display:'flex', alignItems:'center', gap:10, fontSize:12, color:'var(--text-dim)' }}>
+            {inactiveCount > 0 && <span className="badge badge-amber">{inactiveCount} nonaktif</span>}
+            <span>{filtered.length} tim</span>
           </div>
         </div>
 
-        {/* Table */}
         {loading ? (
-          <div className="py-10 text-center text-xs" style={{ color: '#555a78' }}>Loading...</div>
+          <p style={{ textAlign:'center', color:'var(--text-dim)', padding:'32px 0', fontSize:12 }}>Memuat...</p>
         ) : filtered.length === 0 ? (
-          <div className="py-10 text-center text-xs" style={{ color: '#555a78' }}>
-            {search ? 'No teams match your search.' : 'No teams yet. Create your first team above.'}
-          </div>
+          <p style={{ textAlign:'center', color:'var(--text-dim)', padding:'32px 0', fontSize:12 }}>
+            {search ? 'Tidak ada tim yang cocok.' : 'Belum ada tim. Buat tim pertama di atas.'}
+          </p>
         ) : (
-          <table className="w-full">
-            <thead>
-              <tr>
-                {['Team', 'Game', 'Members', 'Status', 'Created', 'Actions'].map(h => (
-                  <th key={h} className="table-th">{h}</th>
+          <div style={{ overflowX:'auto' }}>
+            <table style={{ width:'100%' }}>
+              <thead>
+                <tr>{['Tim','Game','Member','Status','Dibuat','Aksi'].map(h=><th key={h} className="table-th">{h}</th>)}</tr>
+              </thead>
+              <tbody>
+                {filtered.map(team => (
+                  <tr key={team.id}>
+                    <td className="table-td">
+                      <p style={{ fontWeight:500, color:'var(--text-primary)' }}>{team.name}</p>
+                      <p style={{ fontSize:10, fontFamily:'IBM Plex Mono,monospace', color:'var(--text-dim)', marginTop:2 }}>{team.id}</p>
+                    </td>
+                    <td className="table-td" style={{ color:'var(--text-muted)' }}>{team.game}</td>
+                    <td className="table-td">
+                      <span style={{ display:'inline-flex', alignItems:'center', gap:5, color:'var(--text-muted)' }}>
+                        <Users size={11} />{team.member_count}
+                      </span>
+                    </td>
+                    <td className="table-td">
+                      <span className={`badge ${team.is_active ? 'badge-green' : 'badge-slate'}`}>
+                        {team.is_active ? 'aktif' : 'nonaktif'}
+                      </span>
+                    </td>
+                    <td className="table-td" style={{ color:'var(--text-dim)', fontSize:12 }}>
+                      {new Date(team.created_at).toLocaleDateString('id-ID', { day:'numeric', month:'short', year:'numeric' })}
+                    </td>
+                    <td className="table-td">
+                      <div style={{ display:'flex', gap:6, flexWrap:'wrap' }}>
+                        <button className="btn" style={{ fontSize:11, padding:'4px 8px', gap:4 }} onClick={() => setEditTarget(team)}>
+                          <Edit2 size={10}/>Edit
+                        </button>
+                        {team.is_active ? (
+                          <button className="btn btn-danger" style={{ fontSize:11, padding:'4px 8px', gap:4 }} onClick={() => setDeactTarget(team)}>
+                            <Power size={10}/>Nonaktif
+                          </button>
+                        ) : (
+                          <button className="btn btn-success" style={{ fontSize:11, padding:'4px 8px', gap:4 }} onClick={() => handleActivate(team)}>
+                            <Power size={10}/>Aktifkan
+                          </button>
+                        )}
+                        <button className="btn btn-danger" style={{ fontSize:11, padding:'4px 8px' }} onClick={() => setDeleteTarget(team)} title="Hapus permanen">
+                          <Trash2 size={10}/>
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
                 ))}
-              </tr>
-            </thead>
-            <tbody>
-              {filtered.map(team => (
-                <tr key={team.id}>
-                  <td className="table-td">
-                    <p className="font-medium" style={{ color: '#dde0ef' }}>{team.name}</p>
-                    <p className="text-[10px] font-mono mt-0.5" style={{ color: '#3a3f5c' }}>{team.id}</p>
-                  </td>
-
-                  <td className="table-td">{team.game}</td>
-
-                  <td className="table-td">
-                    <span className="inline-flex items-center gap-1.5" style={{ color: '#7c80a0' }}>
-                      <Users size={11} />
-                      {team.member_count}
-                    </span>
-                  </td>
-
-                  <td className="table-td">
-                    <span className={`badge ${team.is_active ? 'badge-green' : 'badge-slate'}`}>
-                      {team.is_active ? 'active' : 'inactive'}
-                    </span>
-                  </td>
-
-                  <td className="table-td" style={{ color: '#555a78' }}>
-                    {new Date(team.created_at).toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' })}
-                  </td>
-
-                  <td className="table-td">
-                    <div className="flex items-center gap-1.5">
-                      {/* Edit */}
-                      <button
-                        className="btn text-xs py-1 px-2 gap-1"
-                        onClick={() => setEditTarget(team)}
-                        title="Edit team"
-                      >
-                        <Edit2 size={11} />
-                        Edit
-                      </button>
-
-                      {/* Deactivate / Activate */}
-                      {team.is_active ? (
-                        <button
-                          className="btn btn-danger text-xs py-1 px-2 gap-1"
-                          onClick={() => setDeactTarget(team)}
-                          title="Deactivate team"
-                        >
-                          <Power size={11} />
-                          Deactivate
-                        </button>
-                      ) : (
-                        <button
-                          className="btn btn-success text-xs py-1 px-2 gap-1"
-                          onClick={() => handleActivate(team)}
-                          title="Activate team"
-                        >
-                          <Power size={11} />
-                          Activate
-                        </button>
-                      )}
-
-                      {/* Delete */}
-                      <button
-                        className="btn text-xs py-1 px-2"
-                        onClick={() => setDeleteTarget(team)}
-                        title="Delete team"
-                        style={{ color: '#555a78' }}
-                      >
-                        <Trash2 size={11} />
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+              </tbody>
+            </table>
+          </div>
         )}
       </div>
 
-      {/* Modals */}
-      <TeamFormModal
-        open={createOpen}
-        onClose={() => setCreateOpen(false)}
-        onSubmit={handleCreate}
-        loading={busy}
-      />
-
-      <TeamFormModal
-        open={!!editTarget}
-        onClose={() => setEditTarget(null)}
-        onSubmit={handleEdit}
-        team={editTarget}
-        loading={busy}
-      />
-
-      <DeactivateModal
-        open={!!deactTarget}
-        onClose={() => setDeactTarget(null)}
-        onConfirm={handleDeactivate}
-        teamName={deactTarget?.name}
-        loading={busy}
-      />
-
-      <DeleteTeamModal
-        open={!!deleteTarget}
-        onClose={() => setDeleteTarget(null)}
-        onConfirm={handleDelete}
-        team={deleteTarget}
-        loading={busy}
-      />
+      <TeamFormModal open={createOpen} onClose={() => setCreateOpen(false)} onSubmit={handleCreate} loading={busy} />
+      <TeamFormModal open={!!editTarget} onClose={() => setEditTarget(null)} onSubmit={handleEdit} team={editTarget} loading={busy} />
+      <DeactivateModal open={!!deactTarget} onClose={() => setDeactTarget(null)} onConfirm={handleDeactivate} teamName={deactTarget?.name} loading={busy} />
+      <DeleteTeamModal open={!!deleteTarget} onClose={() => setDeleteTarget(null)} onConfirm={handleDelete} team={deleteTarget} loading={busy} />
     </DashboardLayout>
   )
 }

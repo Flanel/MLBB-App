@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import Sidebar from './Sidebar'
 import Topbar from './Topbar'
 import ToastContainer from '@/components/ui/Toast'
@@ -5,13 +6,14 @@ import { useToast } from '@/hooks/useToast'
 
 export default function DashboardLayout({ children, title, subtitle }) {
   const { toasts, removeToast } = useToast()
+  const [mobileOpen, setMobileOpen] = useState(false)
 
   return (
-    <div className="flex h-screen overflow-hidden" style={{ background: '#080910' }}>
-      <Sidebar />
-      <div className="flex flex-col flex-1 overflow-hidden">
-        <Topbar title={title} subtitle={subtitle} />
-        <main className="flex-1 overflow-y-auto p-5 animate-fade-up">
+    <div style={{ display:'flex', height:'100vh', overflow:'hidden', background:'var(--bg-base)' }}>
+      <Sidebar mobileOpen={mobileOpen} onMobileClose={() => setMobileOpen(false)} />
+      <div style={{ display:'flex', flexDirection:'column', flex:1, overflow:'hidden' }}>
+        <Topbar title={title} subtitle={subtitle} onMenuClick={() => setMobileOpen(true)} />
+        <main style={{ flex:1, overflowY:'auto', padding:'20px' }} className="animate-fade-up">
           {children}
         </main>
       </div>

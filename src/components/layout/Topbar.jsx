@@ -1,53 +1,38 @@
-import { Bell, ChevronRight } from 'lucide-react'
+import { Bell, ChevronRight, Menu } from 'lucide-react'
 
-export default function Topbar({ title, subtitle }) {
+export default function Topbar({ title, subtitle, onMenuClick }) {
   return (
-    <header
-      className="flex items-center gap-3 px-5 flex-shrink-0"
-      style={{
-        height: 'var(--topbar-height)',
-        background: '#0c0d18',
-        borderBottom: '1px solid #1e2135',
-      }}
-    >
-      <div className="flex-1 min-w-0 flex items-center gap-2">
+    <header style={{ height:'var(--topbar-height)', background:'var(--bg-deep)', borderBottom:'1px solid var(--border-1)', display:'flex', alignItems:'center', gap:12, padding:'0 20px', flexShrink:0 }}>
+      {/* Hamburger — mobile only */}
+      <button
+        onClick={onMenuClick}
+        className="mobile-only"
+        style={{ background:'transparent', border:'none', color:'var(--text-muted)', cursor:'pointer', padding:4, borderRadius:6, alignItems:'center', justifyContent:'center' }}
+      >
+        <Menu size={18} />
+      </button>
+
+      {/* Title */}
+      <div style={{ flex:1, minWidth:0, display:'flex', alignItems:'center', gap:8 }}>
         {subtitle ? (
           <>
-            <span
-              className="text-sm font-medium truncate"
-              style={{ color: '#555a78', fontFamily: 'Syne, sans-serif' }}
-            >
-              {title}
-            </span>
-            <ChevronRight size={13} style={{ color: '#2a2e45', flexShrink: 0 }} />
-            <span
-              className="text-sm font-semibold truncate"
-              style={{ color: '#dde0ef', fontFamily: 'Syne, sans-serif' }}
-            >
-              {subtitle}
-            </span>
+            <span style={{ fontSize:13, fontWeight:500, color:'var(--text-muted)', fontFamily:'Syne,sans-serif', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{title}</span>
+            <ChevronRight size={12} style={{ color:'var(--border-3)', flexShrink:0 }} />
+            <span style={{ fontSize:13, fontWeight:600, color:'var(--text-primary)', fontFamily:'Syne,sans-serif', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{subtitle}</span>
           </>
         ) : (
-          <span
-            className="text-sm font-semibold truncate"
-            style={{ color: '#dde0ef', fontFamily: 'Syne, sans-serif' }}
-          >
-            {title}
-          </span>
+          <span style={{ fontSize:13, fontWeight:600, color:'var(--text-primary)', fontFamily:'Syne,sans-serif' }}>{title}</span>
         )}
       </div>
 
+      {/* Bell */}
       <button
-        className="relative flex items-center justify-center rounded-lg transition-colors"
-        style={{ width: 32, height: 32, color: '#555a78', background: 'transparent' }}
-        onMouseEnter={e => { e.currentTarget.style.background = '#161828'; e.currentTarget.style.color = '#a0a4be' }}
-        onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = '#555a78' }}
+        style={{ position:'relative', width:32, height:32, display:'flex', alignItems:'center', justifyContent:'center', borderRadius:8, background:'transparent', border:'none', color:'var(--text-muted)', cursor:'pointer', transition:'all 0.15s' }}
+        onMouseEnter={e => { e.currentTarget.style.background='var(--bg-elevated)'; e.currentTarget.style.color='var(--text-secondary)' }}
+        onMouseLeave={e => { e.currentTarget.style.background='transparent'; e.currentTarget.style.color='var(--text-muted)' }}
       >
         <Bell size={15} strokeWidth={1.75} />
-        <span
-          className="absolute top-1.5 right-1.5 rounded-full"
-          style={{ width: 5, height: 5, background: '#e11d48' }}
-        />
+        <span style={{ position:'absolute', top:6, right:6, width:5, height:5, borderRadius:'50%', background:'var(--ocean-400)' }} />
       </button>
     </header>
   )

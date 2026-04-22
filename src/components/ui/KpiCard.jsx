@@ -1,31 +1,22 @@
-import clsx from 'clsx'
+export default function KpiCard({ label, value, sub, variant = 'neutral', icon: Icon, accent }) {
+  const subColor = variant === 'up' ? 'var(--green)' : variant === 'down' ? 'var(--red)' : 'var(--text-dim)'
+  const accentColor = accent || (variant === 'up' ? 'var(--green)' : variant === 'down' ? 'var(--red)' : 'var(--ocean-400)')
 
-const subColors = {
-  up:      '#34d399',
-  down:    '#fb4c6c',
-  neutral: '#555a78',
-}
-
-export default function KpiCard({ label, value, sub, variant = 'neutral' }) {
   return (
-    <div className="card animate-fade-up" style={{ borderColor: '#1e2135' }}>
-      <p
-        className="text-xs font-medium uppercase tracking-wider mb-2"
-        style={{ color: '#555a78', fontFamily: 'Syne, sans-serif', letterSpacing: '0.08em' }}
-      >
+    <div className="card animate-fade-up" style={{ position:'relative', overflow:'hidden' }}>
+      {Icon && (
+        <div style={{ position:'absolute', top:12, right:12, opacity:0.15 }}>
+          <Icon size={28} style={{ color: accentColor }} />
+        </div>
+      )}
+      <p style={{ fontSize:10, fontWeight:600, textTransform:'uppercase', letterSpacing:'0.08em', color:'var(--text-dim)', fontFamily:'Syne,sans-serif', marginBottom:8 }}>
         {label}
       </p>
-      <p
-        className="text-2xl font-bold leading-none"
-        style={{ fontFamily: 'IBM Plex Mono, monospace', color: '#dde0ef' }}
-      >
+      <p style={{ fontSize:24, fontWeight:700, lineHeight:1, fontFamily:'IBM Plex Mono,monospace', color:'var(--text-primary)' }}>
         {value}
       </p>
       {sub && (
-        <p
-          className="text-xs mt-1.5"
-          style={{ color: subColors[variant] || subColors.neutral }}
-        >
+        <p style={{ fontSize:11, marginTop:6, color: subColor }}>
           {sub}
         </p>
       )}

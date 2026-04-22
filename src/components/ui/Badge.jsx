@@ -1,17 +1,8 @@
-import clsx from 'clsx'
-
 const variants = {
-  green: 'badge-green',
-  red:   'badge-red',
-  blue:  'badge-blue',
-  amber: 'badge-amber',
-  slate: 'badge-slate',
+  green: 'badge-green', red: 'badge-red', ocean: 'badge-ocean',
+  navy: 'badge-navy', amber: 'badge-amber', slate: 'badge-slate',
+  blue: 'badge-ocean',
 }
-
-export default function Badge({ variant = 'slate', className, children }) {
-  return (
-    <span className={clsx('badge', variants[variant], className)}>
-      {children}
-    </span>
-  )
+export default function Badge({ variant = 'slate', children, style }) {
+  return <span className={`badge ${variants[variant] || 'badge-slate'}`} style={style}>{children}</span>
 }

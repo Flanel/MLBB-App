@@ -1,42 +1,82 @@
+import { useState, useEffect } from 'react'
 import DashboardLayout from '@/components/layout/DashboardLayout'
 import KpiCard from '@/components/ui/KpiCard'
-
-const MATCHES = [
-  { opponent: 'Red Titans',  result: 'Win',  kda: '4.2', tournament: 'ML Weekly #24', date: 'Today'      },
-  { opponent: 'Blue Storm',  result: 'Loss', kda: '2.1', tournament: 'ML Weekly #24', date: 'Yesterday'  },
-  { opponent: 'Nova Squad',  result: 'Win',  kda: '5.8', tournament: 'MDL S8',        date: '3 days ago' },
-  { opponent: 'Iron Wolves', result: 'Win',  kda: '3.9', tournament: 'MDL S8',        date: '5 days ago' },
-]
+import { supabase } from '@/lib/supabase'
+import { useAuth } from '@/hooks/useAuth'
+import { TrendingUp, Users, Swords, Trophy } from 'lucide-react'
 
 export default function TmDashboardPage() {
+  const { user } = useAuth()
+  const [teamName, setTeamName]   = useState('Tim Kamu')
+  const [matches, setMatches]     = useState([])
+  const [stats, setStats]         = useState({ winRate: 0, total: 0, players: 0, tournaments: 0 })
+  const [loading, setLoading]     = useState(true)
+
+  useEffect(() => {
+    async function load() {
+      if (!user) return
+      const { data: profile } = await supabase.from('users').select('team_id, teams(name)').eq('id', user.id).single()
+      if (!profile?.team_id) { setLoading(false); return }
+      const tid = profile.team_id
+      setTeamName(profile.teams?.name || 'Tim Kamu')
+
+      const [{ data: matchData }, { data: playerData }, { data: tournData }] = await Promise.all([
+        supabase.from('matches').select('result, opponent, tournament, date').eq('team_id', tid).order('date', { ascending: false }).limit(10),
+        supabase.from('users').select('id', { count: 'exact', head: true }).eq('team_id', tid).eq('role', 'player'),
+        supabase.from('tournaments').select('id', { count: 'exact', head: true }).eq('team_id', tid),
+      ])
+
+      const mx = matchData || []
+      const wins = mx.filter(m => m.result === 'Win').length
+      setMatches(mx)
+      setStats({
+        winRate: mx.length ? Math.round((wins / mx.length) * 100) : 0,
+        total: mx.length,
+        players: playerData?.length || 0,
+        tournaments: tournData?.length || 0,
+      })
+      setLoading(false)
+    }
+    load()
+  }, [user])
+
   return (
-    <DashboardLayout title="Phantom Five" subtitle="Team Manager Dashboard">
-      <h2 className="text-base font-semibold text-slate-800 mb-0.5">Dashboard</h2>
-      <p className="text-xs text-slate-400 mb-4">Summary for Phantom Five.</p>
-      <div className="grid grid-cols-4 gap-3 mb-5">
-        <KpiCard label="Win rate"       value="68%"  sub="+4% this month" variant="up" />
-        <KpiCard label="Total matches"  value="47"   sub="Season record"  variant="neutral" />
-        <KpiCard label="Active players" value="5"    sub="+2 staff"       variant="neutral" />
-        <KpiCard label="Tournaments"    value="3"    sub="1 ongoing"      variant="neutral" />
+    <DashboardLayout title={teamName} subtitle="Team Manager Dashboard">
+      <div style={{ marginBottom:20 }}>
+        <h2 style={{ fontFamily:'Syne,sans-serif', fontSize:15, fontWeight:700, color:'var(--text-primary)', marginBottom:3 }}>Dashboard</h2>
+        <p style={{ fontSize:12, color:'var(--text-muted)' }}>Ringkasan performa tim {teamName}.</p>
       </div>
+
+      <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit,minmax(170px,1fr))', gap:12, marginBottom:20 }}>
+        <KpiCard label="Win Rate" value={loading ? '—' : `${stats.winRate}%`} sub="Dari semua match" variant="up" icon={TrendingUp} />
+        <KpiCard label="Total Match" value={loading ? '—' : stats.total} sub="Season ini" variant="neutral" icon={Swords} />
+        <KpiCard label="Pemain Aktif" value={loading ? '—' : stats.players} variant="neutral" icon={Users} />
+        <KpiCard label="Tournament" value={loading ? '—' : stats.tournaments} variant="neutral" icon={Trophy} />
+      </div>
+
       <div className="card">
-        <p className="text-xs font-medium text-slate-500 uppercase tracking-wide mb-3">Recent matches</p>
-        <table className="w-full">
-          <thead>
-            <tr>{['Opponent', 'Result', 'KDA avg', 'Tournament', 'Date'].map(h => <th key={h} className="table-th">{h}</th>)}</tr>
-          </thead>
-          <tbody>
-            {MATCHES.map((m, i) => (
-              <tr key={i} className="hover:bg-slate-50">
-                <td className="table-td font-medium">{m.opponent}</td>
-                <td className="table-td"><span className={`badge ${m.result === 'Win' ? 'badge-green' : 'badge-red'}`}>{m.result}</span></td>
-                <td className="table-td font-mono">{m.kda}</td>
-                <td className="table-td text-slate-500">{m.tournament}</td>
-                <td className="table-td text-slate-400">{m.date}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+        <p style={{ fontSize:10, fontWeight:600, textTransform:'uppercase', letterSpacing:'0.08em', color:'var(--text-dim)', marginBottom:14, fontFamily:'Syne,sans-serif' }}>Match Terbaru</p>
+        {loading ? (
+          <p style={{ textAlign:'center', color:'var(--text-dim)', padding:'24px 0', fontSize:12 }}>Memuat...</p>
+        ) : matches.length === 0 ? (
+          <p style={{ textAlign:'center', color:'var(--text-dim)', padding:'24px 0', fontSize:12 }}>Belum ada match. Input pertama di halaman Match Input.</p>
+        ) : (
+          <div style={{ overflowX:'auto' }}>
+            <table style={{ width:'100%' }}>
+              <thead><tr>{['Lawan','Hasil','Tournament','Tanggal'].map(h=><th key={h} className="table-th">{h}</th>)}</tr></thead>
+              <tbody>
+                {matches.map((m, i) => (
+                  <tr key={i}>
+                    <td className="table-td" style={{ fontWeight:500, color:'var(--text-primary)' }}>{m.opponent}</td>
+                    <td className="table-td"><span className={`badge ${m.result==='Win'?'badge-green':'badge-red'}`}>{m.result}</span></td>
+                    <td className="table-td" style={{ color:'var(--text-muted)' }}>{m.tournament||'—'}</td>
+                    <td className="table-td" style={{ color:'var(--text-dim)', fontFamily:'IBM Plex Mono,monospace', fontSize:11 }}>{m.date}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
       </div>
     </DashboardLayout>
   )
