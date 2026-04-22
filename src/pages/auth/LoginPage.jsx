@@ -2,21 +2,11 @@ import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { supabase } from '@/lib/supabase'
 import { Eye, EyeOff } from 'lucide-react'
+import NXKLogo from '@/components/layout/NXKLogo'
 
 const ROLE_REDIRECT = {
   super_admin: '/super-admin', team_manager: '/team-manager',
   staff: '/team-manager', player: '/player',
-}
-
-function CrownMark() {
-  return (
-    <svg width="30" height="30" viewBox="0 0 28 28" fill="none">
-      <path d="M4 18L7 10L11 15L14 7L17 15L21 10L24 18H4Z"
-        fill="none" stroke="#dde0ef" strokeWidth="1.5" strokeLinejoin="round" />
-      <path d="M4 18H24V20H4V18Z" fill="#dde0ef" opacity="0.35" />
-      <circle cx="14" cy="7" r="2.2" fill="#e11d48" />
-    </svg>
-  )
 }
 
 export default function LoginPage() {
@@ -35,7 +25,15 @@ export default function LoginPage() {
     const { data, error: authError } = await supabase.auth.signInWithPassword({ email, password })
     if (authError) { setError('Email atau password salah.'); setLoading(false); return }
 
-    const { data: profile } = await supabase.from('users').select('role, team_id').eq('id', data.user.id).single()
+    const { data: profile } = await supabase.from('users').select('role, team_id, is_active').eq('id', data.user.id).single()
+
+    // Check if account is active (pending approval)
+    if (profile?.is_active === false && profile?.role === 'player') {
+      await supabase.auth.signOut()
+      setError('Akunmu masih menunggu approval dari management tim. Coba lagi nanti.')
+      setLoading(false)
+      return
+    }
 
     if (profile?.role !== 'super_admin' && profile?.team_id) {
       const { data: team } = await supabase.from('teams').select('is_active').eq('id', profile.team_id).single()
@@ -58,10 +56,10 @@ export default function LoginPage() {
       <div style={{ position:'fixed', width:480, height:480, borderRadius:'50%', background:'radial-gradient(circle,rgba(225,29,72,0.07) 0%,transparent 70%)', top:'50%', left:'50%', transform:'translate(-50%,-50%)', pointerEvents:'none' }} />
 
       <div style={{ width:'100%', maxWidth:400, position:'relative', zIndex:10 }}>
-        {/* Brand */}
+        {/* Brand — uses real NXK logo */}
         <div style={{ display:'flex', flexDirection:'column', alignItems:'center', marginBottom:32 }}>
-          <div style={{ width:60, height:60, borderRadius:16, background:'linear-gradient(135deg,#161828 0%,#0c0d18 100%)', border:'1px solid var(--border-2)', display:'flex', alignItems:'center', justifyContent:'center', marginBottom:16, boxShadow:'0 0 40px rgba(225,29,72,0.12)' }}>
-            <CrownMark />
+          <div style={{ width:80, height:80, borderRadius:20, overflow:'hidden', marginBottom:16, boxShadow:'0 0 48px rgba(225,29,72,0.18)' }}>
+            <img src="/nxk-logo.png" alt="NXK Esports" style={{ width:'100%', height:'100%', objectFit:'cover' }} />
           </div>
           <p style={{ fontFamily:'Syne,sans-serif', fontSize:18, fontWeight:800, letterSpacing:'0.12em', color:'var(--text-primary)' }}>NOCTIS X KING</p>
           <p style={{ fontSize:11, letterSpacing:'0.18em', color:'var(--text-dim)', fontFamily:'Syne,sans-serif', marginTop:2 }}>ESPORTS MANAGEMENT</p>

@@ -1,45 +1,57 @@
 import { NavLink } from 'react-router-dom'
 import { useAuth } from '@/hooks/useAuth'
+import { NXKLogoMark } from '@/components/layout/NXKLogo'
 import {
   LayoutDashboard, Users, Shield, ClipboardList, Settings,
   Swords, Trophy, BarChart2, UserCircle, History, Activity,
-  LogOut, Calendar, TrendingUp, X
+  LogOut, Calendar, TrendingUp, X, Link2, CheckSquare, UserCog
 } from 'lucide-react'
 
 const navConfig = {
   super_admin: [
     { group: 'Main', items: [
-      { to: '/super-admin',          label: 'Overview',    icon: LayoutDashboard },
-      { to: '/super-admin/teams',    label: 'Teams',       icon: Shield },
-      { to: '/super-admin/users',    label: 'Users',       icon: Users },
+      { to: '/super-admin',            label: 'Overview',    icon: LayoutDashboard },
+      { to: '/super-admin/teams',      label: 'Teams',       icon: Shield },
+      { to: '/super-admin/users',      label: 'Users',       icon: Users },
+    ]},
+    { group: 'Management', items: [
+      { to: '/super-admin/approvals',  label: 'Approvals',   icon: CheckSquare, badge: 'approvals' },
+      { to: '/super-admin/invite',     label: 'Invite Staff', icon: Link2 },
     ]},
     { group: 'System', items: [
-      { to: '/super-admin/audit',    label: 'Audit Log',   icon: ClipboardList },
-      { to: '/super-admin/settings', label: 'Settings',    icon: Settings },
+      { to: '/super-admin/audit',      label: 'Audit Log',   icon: ClipboardList },
+      { to: '/super-admin/settings',   label: 'Settings',    icon: Settings },
     ]},
   ],
   team_manager: [
     { group: 'Main', items: [
-      { to: '/team-manager',             label: 'Dashboard',      icon: LayoutDashboard },
+      { to: '/team-manager',           label: 'Dashboard',      icon: LayoutDashboard },
     ]},
     { group: 'Team', items: [
-      { to: '/team-manager/roster',      label: 'Roster',         icon: Users },
-      { to: '/team-manager/matches',     label: 'Match Input',    icon: Swords },
-      { to: '/team-manager/tournaments', label: 'Tournaments',    icon: Trophy },
-      { to: '/team-manager/schedule',    label: 'Schedule',       icon: Calendar },
+      { to: '/team-manager/roster',    label: 'Roster',         icon: Users },
+      { to: '/team-manager/matches',   label: 'Match Input',    icon: Swords },
+      { to: '/team-manager/tournaments', label: 'Tournaments',  icon: Trophy },
+      { to: '/team-manager/schedule',  label: 'Schedule',       icon: Calendar },
     ]},
     { group: 'Reports', items: [
-      { to: '/team-manager/analytics',   label: 'Analytics',      icon: BarChart2 },
-      { to: '/team-manager/winrate',     label: 'Party Win Rate', icon: TrendingUp },
+      { to: '/team-manager/analytics', label: 'Analytics',      icon: BarChart2 },
+      { to: '/team-manager/winrate',   label: 'Party Win Rate', icon: TrendingUp },
+    ]},
+    { group: 'Player Management', items: [
+      { to: '/team-manager/invite',    label: 'Invite Players', icon: Link2 },
+      { to: '/team-manager/approvals', label: 'Approvals',      icon: CheckSquare, badge: 'approvals' },
     ]},
   ],
   staff: [
     { group: 'Main', items: [
-      { to: '/team-manager',             label: 'Dashboard',   icon: LayoutDashboard },
-      { to: '/team-manager/roster',      label: 'Roster',      icon: Users },
-      { to: '/team-manager/matches',     label: 'Match Input', icon: Swords },
+      { to: '/team-manager',           label: 'Dashboard',   icon: LayoutDashboard },
+      { to: '/team-manager/roster',    label: 'Roster',      icon: Users },
+      { to: '/team-manager/matches',   label: 'Match Input', icon: Swords },
       { to: '/team-manager/tournaments', label: 'Tournaments', icon: Trophy },
-      { to: '/team-manager/schedule',    label: 'Schedule',    icon: Calendar },
+      { to: '/team-manager/schedule',  label: 'Schedule',    icon: Calendar },
+    ]},
+    { group: 'Player Management', items: [
+      { to: '/team-manager/invite',    label: 'Invite Players', icon: Link2 },
     ]},
   ],
   player: [
@@ -62,20 +74,6 @@ const roleLabels = {
   staff: 'Staff', player: 'Player',
 }
 
-function NXKMark({ size = 18 }) {
-  return (
-    <svg width={size} height={size} viewBox="0 0 28 28" fill="none">
-      <path d="M4 18L7 10L11 15L14 7L17 15L21 10L24 18H4Z"
-        fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round" />
-      <path d="M4 18H24V20H4V18Z" fill="currentColor" opacity="0.4" />
-      <circle cx="14" cy="7" r="2" fill="#e11d48" />
-    </svg>
-  )
-}
-
-// Single Sidebar component — no duplication
-// On desktop: always visible as part of flex layout
-// On mobile: fixed overlay, shown/hidden via prop
 export default function Sidebar({ mobileOpen, onMobileClose }) {
   const { user, role, signOut } = useAuth()
   const groups = navConfig[role] || []
@@ -89,38 +87,30 @@ export default function Sidebar({ mobileOpen, onMobileClose }) {
     flexDirection: 'column',
     height: '100%',
     flexShrink: 0,
-    // Mobile: fixed overlay
-    // Desktop: normal flow — controlled by media query below
   }
 
   return (
     <>
-      {/* ── Mobile overlay backdrop ── */}
       {mobileOpen && (
         <div
           onClick={onMobileClose}
-          style={{
-            display: 'none', // shown via CSS media query
-            position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.7)', zIndex: 30,
-          }}
+          style={{ display: 'none', position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.7)', zIndex: 30 }}
           className="mobile-backdrop"
         />
       )}
 
-      {/* ── Single Sidebar element ── */}
       <aside className={`app-sidebar${mobileOpen ? ' open' : ''}`} style={sidebarStyle}>
-        {/* Logo */}
-        <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', padding:'14px 16px', borderBottom:'1px solid var(--border-1)', flexShrink:0 }}>
+        {/* Logo — uses real NXK logo */}
+        <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', padding:'12px 14px', borderBottom:'1px solid var(--border-1)', flexShrink:0 }}>
           <div style={{ display:'flex', alignItems:'center', gap:8 }}>
-            <div style={{ width:30, height:30, borderRadius:8, background:'linear-gradient(135deg,#1e2135 0%,#161828 100%)', border:'1px solid var(--border-2)', display:'flex', alignItems:'center', justifyContent:'center', color:'var(--text-secondary)' }}>
-              <NXKMark size={18} />
+            <div style={{ width:32, height:32, borderRadius:8, overflow:'hidden', flexShrink:0 }}>
+              <NXKLogoMark size={32} />
             </div>
             <div>
-              <p style={{ fontFamily:'Syne,sans-serif', fontSize:11, fontWeight:700, letterSpacing:'0.15em', color:'var(--text-primary)', lineHeight:1 }}>NXK</p>
+              <p style={{ fontFamily:'Syne,sans-serif', fontSize:11, fontWeight:800, letterSpacing:'0.14em', color:'var(--text-primary)', lineHeight:1 }}>NXK</p>
               <p style={{ fontSize:9, letterSpacing:'0.12em', color:'var(--text-dim)', lineHeight:1, marginTop:2 }}>ESPORTS</p>
             </div>
           </div>
-          {/* Close button — mobile only */}
           <button
             onClick={onMobileClose}
             className="sidebar-close-btn"
@@ -149,7 +139,7 @@ export default function Sidebar({ mobileOpen, onMobileClose }) {
                       onClick={onMobileClose}
                     >
                       <Icon size={14} strokeWidth={1.75} style={{ flexShrink:0 }} />
-                      <span>{item.label}</span>
+                      <span style={{ flex:1 }}>{item.label}</span>
                     </NavLink>
                   )
                 })}
