@@ -11,7 +11,7 @@ export default function DashboardLayout({ children, title, subtitle }) {
   return (
     <div style={{ display:'flex', height:'100vh', overflow:'hidden', background:'var(--bg-base)' }}>
       <Sidebar mobileOpen={mobileOpen} onMobileClose={() => setMobileOpen(false)} />
-      <div style={{ display:'flex', flexDirection:'column', flex:1, overflow:'hidden' }}>
+      <div style={{ display:'flex', flexDirection:'column', flex:1, overflow:'hidden', minWidth:0 }}>
         <Topbar title={title} subtitle={subtitle} onMenuClick={() => setMobileOpen(true)} />
         <main style={{ flex:1, overflowY:'auto', padding:'20px' }} className="animate-fade-up">
           {children}

@@ -53,7 +53,7 @@ export default function PlayerDashboardPage() {
     <DashboardLayout title={profile?.teams?.name || 'Tim'} subtitle="Player Dashboard">
       {/* Profile card */}
       <div className="card" style={{ display:'flex', alignItems:'center', gap:16, marginBottom:16 }}>
-        <div style={{ width:48, height:48, borderRadius:12, background:'rgba(14,165,233,0.12)', border:'1px solid rgba(14,165,233,0.2)', display:'flex', alignItems:'center', justifyContent:'center', fontSize:16, fontWeight:700, color:'var(--ocean-300)', fontFamily:'Syne,sans-serif', flexShrink:0 }}>
+        <div style={{ width:48, height:48, borderRadius:12, background:'rgba(225,29,72,0.10)', border:'1px solid rgba(225,29,72,0.18)', display:'flex', alignItems:'center', justifyContent:'center', fontSize:16, fontWeight:700, color:'var(--red)', fontFamily:'Syne,sans-serif', flexShrink:0 }}>
           {initials}
         </div>
         <div style={{ flex:1 }}>
@@ -63,7 +63,7 @@ export default function PlayerDashboardPage() {
         {profile?.ign && (
           <div style={{ textAlign:'right' }}>
             <p style={{ fontSize:10, color:'var(--text-dim)', textTransform:'uppercase', letterSpacing:'0.06em' }}>IGN</p>
-            <p style={{ fontFamily:'IBM Plex Mono,monospace', fontWeight:600, fontSize:13, color:'var(--ocean-300)', marginTop:2 }}>{profile.ign}</p>
+            <p style={{ fontFamily:'IBM Plex Mono,monospace', fontWeight:600, fontSize:13, color:'var(--red)', marginTop:2 }}>{profile.ign}</p>
           </div>
         )}
       </div>

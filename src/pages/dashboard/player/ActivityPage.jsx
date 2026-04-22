@@ -7,7 +7,7 @@ import { format } from 'date-fns'
 
 const TYPES = ['Team Scrim', 'Solo Rank', 'Review / VOD', 'Physical Training', 'Other']
 const DOT = {
-  'Team Scrim':        'var(--ocean-400)',
+  'Team Scrim':        'var(--brand)',
   'Solo Rank':         'var(--green)',
   'Review / VOD':      'var(--amber)',
   'Physical Training': 'var(--red)',
@@ -79,7 +79,7 @@ export default function ActivityPage() {
           {feed.length > 0 && (
             <div style={{ marginTop:16, padding:'12px 14px', background:'var(--bg-elevated)', borderRadius:10, border:'1px solid var(--border-2)' }}>
               <p style={{ fontSize:10, color:'var(--text-dim)', textTransform:'uppercase', letterSpacing:'0.06em' }}>Total Tercatat</p>
-              <p style={{ fontSize:20, fontWeight:700, fontFamily:'IBM Plex Mono,monospace', color:'var(--ocean-300)', marginTop:4 }}>{hrs}j {mins}m</p>
+              <p style={{ fontSize:20, fontWeight:700, fontFamily:'IBM Plex Mono,monospace', color:'var(--red)', marginTop:4 }}>{hrs}j {mins}m</p>
               <p style={{ fontSize:11, color:'var(--text-dim)', marginTop:2 }}>dari {feed.length} sesi</p>
             </div>
           )}

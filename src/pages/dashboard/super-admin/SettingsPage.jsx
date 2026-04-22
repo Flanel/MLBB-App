@@ -8,8 +8,8 @@ function SettingSection({ icon: Icon, title, children }) {
   return (
     <div className="card" style={{ marginBottom:16 }}>
       <div style={{ display:'flex', alignItems:'center', gap:10, marginBottom:16 }}>
-        <div style={{ width:32, height:32, borderRadius:8, background:'var(--ocean-glow)', border:'1px solid rgba(14,165,233,0.2)', display:'flex', alignItems:'center', justifyContent:'center' }}>
-          <Icon size={14} style={{ color:'var(--ocean-300)' }} />
+        <div style={{ width:32, height:32, borderRadius:8, background:'var(--brand-glow)', border:'1px solid rgba(225,29,72,0.18)', display:'flex', alignItems:'center', justifyContent:'center' }}>
+          <Icon size={14} style={{ color:'var(--red)' }} />
         </div>
         <p style={{ fontFamily:'Syne,sans-serif', fontSize:12, fontWeight:600, color:'var(--text-primary)' }}>{title}</p>
       </div>
@@ -63,7 +63,7 @@ export default function SettingsPage() {
                 <div><p style={{ fontSize:13, color:'var(--text-primary)' }}>{label}</p><p style={{ fontSize:11, color:'var(--text-muted)', marginTop:2 }}>{sub}</p></div>
                 <label style={{ position:'relative', display:'inline-block', width:36, height:20, cursor:'pointer' }}>
                   <input type="checkbox" defaultChecked style={{ opacity:0, width:0, height:0 }}/>
-                  <span style={{ position:'absolute', inset:0, background:'var(--ocean-500)', borderRadius:10, transition:'0.2s' }}/>
+                  <span style={{ position:'absolute', inset:0, background:'var(--brand)', borderRadius:10, transition:'0.2s' }}/>
                   <span style={{ position:'absolute', top:2, left:2, width:16, height:16, background:'white', borderRadius:'50%', transition:'0.2s' }}/>
                 </label>
               </div>

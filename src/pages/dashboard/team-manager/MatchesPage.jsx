@@ -185,7 +185,7 @@ export default function MatchesPage() {
                       <td className="table-td" style={{ textAlign:'center' }}>
                         <input type="checkbox" checked={stats[idx]?.mvp||false}
                           onChange={e => updateStat(idx,'mvp',e.target.checked)}
-                          style={{ width:16, height:16, cursor:'pointer', accentColor:'var(--ocean-400)' }} />
+                          style={{ width:16, height:16, cursor:'pointer', accentColor:'var(--brand)' }} />
                       </td>
                     </tr>
                   ))}

@@ -14,7 +14,7 @@ const AVL = [
 ]
 
 const TYPE_COLOR = {
-  'Latihan Tim':'var(--ocean-400)', 'Scrim':'var(--navy-bright)', 'Tournament':'var(--green)',
+  'Latihan Tim':'var(--brand)', 'Scrim':'var(--blue)', 'Tournament':'var(--green)',
   'Review/VOD':'var(--amber)', 'Physical Training':'var(--red)', 'Meeting':'var(--text-muted)',
 }
 
@@ -95,7 +95,7 @@ export default function PlayerSchedulePage() {
         <div style={{ display:'flex', flexDirection:'column', gap:12 }}>
           {sessions.map(s => {
             const myAvl = getMyAvl(s)
-            const color = TYPE_COLOR[s.session_type] || 'var(--ocean-400)'
+            const color = TYPE_COLOR[s.session_type] || 'var(--brand)'
             const isPast = s.date < today
             return (
               <div key={s.id} className="card" style={{ opacity: isPast ? 0.6 : 1 }}>

@@ -32,7 +32,7 @@ export default function OverviewPage() {
     load()
   }, [])
 
-  const ROLE_COLOR = { super_admin: 'var(--red)', team_manager: 'var(--ocean-300)', staff: 'var(--amber)', player: 'var(--text-secondary)' }
+  const ROLE_COLOR = { super_admin: 'var(--red)', team_manager: 'var(--red)', staff: 'var(--amber)', player: 'var(--text-secondary)' }
 
   return (
     <DashboardLayout title="System Overview">
@@ -67,7 +67,7 @@ export default function OverviewPage() {
                     <td className="table-td" style={{ fontWeight:500, color:'var(--text-primary)' }}>{t.name}</td>
                     <td className="table-td"><span className={`badge ${t.is_active ? 'badge-green' : 'badge-slate'}`}>{t.is_active ? 'Aktif' : 'Nonaktif'}</span></td>
                     <td className="table-td" style={{ color:'var(--text-muted)', fontSize:12 }}>{format(new Date(t.created_at), 'd MMM yyyy')}</td>
-                    <td className="table-td"><a href="/super-admin/teams" style={{ fontSize:12, color:'var(--ocean-300)', textDecoration:'none' }}>Kelola →</a></td>
+                    <td className="table-td"><a href="/super-admin/teams" style={{ fontSize:12, color:'var(--red)', textDecoration:'none' }}>Kelola →</a></td>
                   </tr>
                 ))}
               </tbody>
@@ -84,10 +84,10 @@ export default function OverviewPage() {
             <div style={{ display:'flex', flexDirection:'column', gap:12 }}>
               {recentLogs.map(log => (
                 <div key={log.id} style={{ display:'flex', gap:10, alignItems:'flex-start' }}>
-                  <span style={{ width:6, height:6, borderRadius:'50%', background:'var(--ocean-400)', marginTop:5, flexShrink:0 }} />
+                  <span style={{ width:6, height:6, borderRadius:'50%', background:'var(--brand)', marginTop:5, flexShrink:0 }} />
                   <div>
                     <p style={{ fontSize:12, color:'var(--text-secondary)' }}>
-                      <span style={{ color: ROLE_COLOR[log.users?.role] || 'var(--ocean-300)', fontWeight:500 }}>{log.users?.name || 'System'}</span>
+                      <span style={{ color: ROLE_COLOR[log.users?.role] || 'var(--red)', fontWeight:500 }}>{log.users?.name || 'System'}</span>
                       {' · '}{log.action}
                     </p>
                     {log.target && <p style={{ fontSize:11, color:'var(--text-dim)', marginTop:1 }}>{log.target}</p>}

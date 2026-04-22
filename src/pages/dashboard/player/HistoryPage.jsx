@@ -77,7 +77,7 @@ export default function HistoryPage() {
                       <td className="table-td" style={{ fontWeight:500, color:'var(--text-primary)' }}>{r.matches?.opponent||'—'}</td>
                       <td className="table-td">{r.hero||'—'}</td>
                       <td className="table-td" style={{ fontFamily:'IBM Plex Mono,monospace', fontSize:12 }}>{r.kills}/{r.deaths}/{r.assists}</td>
-                      <td className="table-td" style={{ fontFamily:'IBM Plex Mono,monospace', fontWeight:600, color:'var(--ocean-300)' }}>{kda.toFixed(2)}</td>
+                      <td className="table-td" style={{ fontFamily:'IBM Plex Mono,monospace', fontWeight:600, color:'var(--red)' }}>{kda.toFixed(2)}</td>
                       <td className="table-td" style={{ fontFamily:'IBM Plex Mono,monospace', fontSize:12 }}>{r.damage ? r.damage.toLocaleString() : '—'}</td>
                       <td className="table-td"><span className={`badge ${r.matches?.result==='Win'?'badge-green':'badge-red'}`}>{r.matches?.result||'—'}</span></td>
                       <td className="table-td">{r.mvp ? <span className="badge badge-amber">MVP</span> : <span style={{ color:'var(--text-dim)' }}>—</span>}</td>

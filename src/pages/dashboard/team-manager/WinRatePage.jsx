@@ -6,8 +6,8 @@ import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContaine
 import { Users, User, UsersRound } from 'lucide-react'
 
 const PARTY_COLORS = {
-  'Solo (1)':  '#3b82f6',
-  'Duo (2)':   '#0ea5e9',
+  'Solo (1)':  '#f43f5e',
+  'Duo (2)':   '#e11d48',
   'Trio (3)':  '#7c3aed',
   'Squad (4)': '#0d9488',
   'Party (5)': '#22d3a0',
@@ -19,7 +19,7 @@ const TT = ({ active, payload, label }) => {
   return (
     <div style={{ background:'var(--bg-elevated)', border:'1px solid var(--border-2)', borderRadius:8, padding:'10px 14px', minWidth:140 }}>
       <p style={{ fontSize:11, color:'var(--text-muted)', marginBottom:6 }}>{label}</p>
-      <p style={{ fontSize:14, fontWeight:700, color: d.fill || 'var(--ocean-300)', fontFamily:'IBM Plex Mono,monospace' }}>{d.value}% WR</p>
+      <p style={{ fontSize:14, fontWeight:700, color: d.fill || 'var(--red)', fontFamily:'IBM Plex Mono,monospace' }}>{d.value}% WR</p>
       <p style={{ fontSize:11, color:'var(--text-dim)', marginTop:2 }}>{payload[0]?.payload?.games} game</p>
     </div>
   )
@@ -91,8 +91,8 @@ export default function WinRatePage() {
       {/* Summary row */}
       {!loading && bestParty && (
         <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit,minmax(160px,1fr))', gap:12, marginBottom:20 }}>
-          <div className="card" style={{ borderColor:'rgba(14,165,233,0.25)', background:'rgba(14,165,233,0.05)' }}>
-            <p style={{ fontSize:10, fontWeight:600, textTransform:'uppercase', letterSpacing:'0.08em', color:'var(--ocean-400)', marginBottom:8, fontFamily:'Syne,sans-serif' }}>🏆 Best Party Size</p>
+          <div className="card" style={{ borderColor:'rgba(225,29,72,0.20)', background:'rgba(14,165,233,0.05)' }}>
+            <p style={{ fontSize:10, fontWeight:600, textTransform:'uppercase', letterSpacing:'0.08em', color:'var(--brand)', marginBottom:8, fontFamily:'Syne,sans-serif' }}>🏆 Best Party Size</p>
             <p style={{ fontSize:22, fontWeight:700, fontFamily:'IBM Plex Mono,monospace', color:'var(--text-primary)' }}>{bestParty.name}</p>
             <p style={{ fontSize:11, color:'var(--green)', marginTop:4 }}>{bestParty.wr}% WR dari {bestParty.games} game</p>
           </div>
@@ -120,7 +120,7 @@ export default function WinRatePage() {
               <Tooltip content={<TT />} cursor={{ fill:'rgba(14,165,233,0.04)' }} />
               <Bar dataKey="wr" radius={[6,6,0,0]}>
                 {data.map((entry, i) => (
-                  <Cell key={i} fill={PARTY_COLORS[entry.name] || 'var(--ocean-500)'} />
+                  <Cell key={i} fill={PARTY_COLORS[entry.name] || 'var(--brand)'} />
                 ))}
               </Bar>
             </BarChart>
@@ -153,7 +153,7 @@ export default function WinRatePage() {
             <div style={{ display:'flex', gap:20 }}>
               <div>
                 <p style={{ fontSize:10, color:'var(--text-dim)', textTransform:'uppercase', letterSpacing:'0.08em' }}>Win Rate Bersama</p>
-                <p style={{ fontSize:22, fontWeight:700, fontFamily:'IBM Plex Mono,monospace', color:'var(--ocean-300)', marginTop:2 }}>—%</p>
+                <p style={{ fontSize:22, fontWeight:700, fontFamily:'IBM Plex Mono,monospace', color:'var(--red)', marginTop:2 }}>—%</p>
                 <p style={{ fontSize:11, color:'var(--text-dim)', marginTop:2 }}>Butuh lebih banyak data match</p>
               </div>
             </div>

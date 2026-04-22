@@ -98,7 +98,7 @@ export default function AnalyticsPage() {
             <XAxis dataKey="match" tick={{ fontSize:11, fill:'var(--text-dim)' }} />
             <YAxis domain={[30,100]} tick={{ fontSize:11, fill:'var(--text-dim)' }} unit="%" />
             <Tooltip content={<TT />} />
-            <Line type="monotone" dataKey="wr" stroke="var(--ocean-400)" strokeWidth={2} dot={{ r:3, fill:'var(--ocean-400)' }} activeDot={{ r:5 }} unit="%" name="Win Rate" />
+            <Line type="monotone" dataKey="wr" stroke="var(--brand)" strokeWidth={2} dot={{ r:3, fill:'var(--brand)' }} activeDot={{ r:5 }} unit="%" name="Win Rate" />
           </LineChart>
         </ResponsiveContainer>
       </div>
@@ -115,9 +115,9 @@ export default function AnalyticsPage() {
                   <p style={{ fontSize:13, color:'var(--text-primary)', fontWeight:500 }}>{p.name}</p>
                   <p style={{ fontSize:10, color:'var(--text-dim)' }}>{p.lane}</p>
                 </div>
-                <span style={{ fontFamily:'IBM Plex Mono,monospace', fontSize:13, fontWeight:600, color:'var(--ocean-300)' }}>{p.kda}</span>
+                <span style={{ fontFamily:'IBM Plex Mono,monospace', fontSize:13, fontWeight:600, color:'var(--red)' }}>{p.kda}</span>
                 <div style={{ width:64, height:4, background:'var(--border-1)', borderRadius:2, overflow:'hidden', flexShrink:0 }}>
-                  <div style={{ height:'100%', background:'var(--ocean-400)', borderRadius:2, width:`${Math.min((parseFloat(p.kda)/8)*100,100)}%` }} />
+                  <div style={{ height:'100%', background:'var(--brand)', borderRadius:2, width:`${Math.min((parseFloat(p.kda)/8)*100,100)}%` }} />
                 </div>
               </div>
             ))}

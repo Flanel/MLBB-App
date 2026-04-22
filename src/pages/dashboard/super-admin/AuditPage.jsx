@@ -53,7 +53,7 @@ export default function AuditPage() {
           </select>
           <div style={{ marginLeft:'auto', display:'flex', gap:8 }}>
             <button className="btn" style={{ padding:'6px 10px' }} onClick={fetchLogs} title="Refresh"><RefreshCw size={13} className={loading?'animate-spin':''}/></button>
-            <button className="btn btn-ocean" onClick={exportCSV} style={{ gap:6 }}><Download size={13}/>Export CSV</button>
+            <button className="btn btn-primary" onClick={exportCSV} style={{ gap:6 }}><Download size={13}/>Export CSV</button>
           </div>
         </div>
 

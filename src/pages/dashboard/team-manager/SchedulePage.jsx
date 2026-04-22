@@ -165,10 +165,10 @@ function SessionCard({ session: s, onDelete, countAvl, past }) {
   const total = s.schedule_availability?.length || 0
 
   const TYPE_COLOR = {
-    'Latihan Tim':'var(--ocean-400)', 'Scrim':'var(--navy-bright)', 'Tournament':'var(--green)',
+    'Latihan Tim':'var(--brand)', 'Scrim':'var(--blue)', 'Tournament':'var(--green)',
     'Review/VOD':'var(--amber)', 'Physical Training':'#f87171', 'Meeting':'var(--text-muted)',
   }
-  const color = TYPE_COLOR[s.session_type] || 'var(--ocean-400)'
+  const color = TYPE_COLOR[s.session_type] || 'var(--brand)'
 
   return (
     <div className="card" style={{ display:'flex', gap:16, alignItems:'flex-start' }}>
