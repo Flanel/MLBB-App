@@ -16,17 +16,16 @@ export default function InviteRegisterPage() {
   const navigate  = useNavigate()
 
   const [tokenData,   setTokenData]   = useState(null)
-  const [tokenStatus, setTokenStatus] = useState('loading') // loading|valid|expired|used|invalid
+  const [tokenStatus, setTokenStatus] = useState('loading')
   const [teamName,    setTeamName]    = useState('')
-  const [step,        setStep]        = useState(1) // 1=form, 2=success
+  const [step,        setStep]        = useState(1)
 
-  // Auth fields
   const [email,     setEmail]     = useState('')
   const [password,  setPassword]  = useState('')
   const [confirmPw, setConfirmPw] = useState('')
   const [showPw,    setShowPw]    = useState(false)
 
-  // Player profile fields
+  // Player fields
   const [nickname,   setNickname]   = useState('')
   const [fullName,   setFullName]   = useState('')
   const [birthPlace, setBirthPlace] = useState('')
@@ -35,7 +34,7 @@ export default function InviteRegisterPage() {
   const [domicile,   setDomicile]   = useState('')
   const [esportType, setEsportType] = useState('')
 
-  // Staff/Manager fields
+  // Staff/Manager field
   const [staffName, setStaffName] = useState('')
 
   const [submitting, setSubmitting] = useState(false)
@@ -50,8 +49,8 @@ export default function InviteRegisterPage() {
         .eq('token', token)
         .single()
 
-      if (error || !data) { setTokenStatus('invalid'); return }
-      if (data.used_at)   { setTokenStatus('used');    return }
+      if (error || !data)                        { setTokenStatus('invalid'); return }
+      if (data.used_at)                          { setTokenStatus('used');    return }
       if (new Date(data.expires_at) < new Date()) { setTokenStatus('expired'); return }
 
       setTokenData(data)
@@ -70,73 +69,42 @@ export default function InviteRegisterPage() {
 
     setSubmitting(true)
     try {
-      // 1. Create Supabase auth user
+      const isPlayer = tokenData.role === 'player'
+
+      // ── Step 1: Create Supabase auth user ──────────────────
       const { data: authData, error: signupErr } = await supabase.auth.signUp({ email, password })
       if (signupErr) throw new Error(signupErr.message)
+
       const userId = authData.user?.id
       if (!userId) throw new Error('Gagal membuat akun. Coba lagi.')
 
-      const isPlayer = tokenData.role === 'player'
+      // ── Step 2: Call SECURITY DEFINER RPC ─────────────────
+      // This bypasses RLS and handles: users upsert + player_application + token used
+      const { error: rpcErr } = await supabase.rpc('register_invite_user', {
+        p_user_id:         userId,
+        p_email:           email,
+        p_name:            isPlayer ? fullName : staffName,
+        p_role:            tokenData.role,
+        p_team_id:         tokenData.team_id,
+        p_is_active:       false,  // always false — needs approval/activation
+        p_ign:             isPlayer ? nickname : null,
+        p_invite_token_id: tokenData.id,
+        // player-only
+        p_nickname:        isPlayer ? nickname    : null,
+        p_full_name:       isPlayer ? fullName    : null,
+        p_birth_place:     isPlayer ? birthPlace  : null,
+        p_birth_date:      isPlayer ? birthDate   : null,
+        p_address:         isPlayer ? address     : null,
+        p_domicile:        isPlayer ? domicile    : null,
+        p_esport_type:     isPlayer ? esportType  : null,
+      })
 
-      if (isPlayer) {
-        // ── PLAYER FLOW ──────────────────────────────────────────────
-        // 2a. Create player application (pending TM approval)
-        const { error: appErr } = await supabase.from('player_applications').insert({
-          invite_token_id: tokenData.id,
-          user_id:         userId,
-          team_id:         tokenData.team_id,
-          nickname,
-          full_name:       fullName,
-          birth_place:     birthPlace,
-          birth_date:      birthDate,
-          address,
-          domicile,
-          esport_type:     esportType,
-          status:          'pending',
-        })
-        if (appErr) throw new Error(appErr.message)
+      if (rpcErr) throw new Error(rpcErr.message)
 
-        // 2b. Upsert user row — is_active: false until TM approves
-        const { error: upsertErr } = await supabase.from('users').upsert({
-          id:        userId,
-          email,
-          role:      'player',
-          team_id:   tokenData.team_id,
-          is_active: false,
-          name:      fullName,
-          ign:       nickname,
-        }, { onConflict: 'id' })
-        if (upsertErr) console.warn('users upsert warning:', upsertErr.message)
-
-        // 2c. Mark token as used (FIX: was missing for players)
-        await supabase.from('invite_tokens').update({
-          used_at: new Date().toISOString(),
-          used_by: userId,
-        }).eq('id', tokenData.id)
-
-      } else {
-        // ── STAFF / MANAGER FLOW ─────────────────────────────────────
-        // Upsert user row — is_active: false until SA verifies/activates
-        const { error: upsertErr } = await supabase.from('users').upsert({
-          id:        userId,
-          email,
-          role:      tokenData.role,
-          team_id:   tokenData.team_id,
-          is_active: false,   // SA must activate after email verification
-          name:      staffName,
-        }, { onConflict: 'id' })
-        if (upsertErr) throw new Error(upsertErr.message)
-
-        // Mark token as used
-        await supabase.from('invite_tokens').update({
-          used_at: new Date().toISOString(),
-          used_by: userId,
-        }).eq('id', tokenData.id)
-      }
-
-      // Sign out — login only allowed after approval/activation
+      // ── Step 3: Sign out — login only after approval ───────
       await supabase.auth.signOut()
       setStep(2)
+
     } catch (err) {
       setError(err.message)
     } finally {
@@ -144,7 +112,7 @@ export default function InviteRegisterPage() {
     }
   }
 
-  const bg   = { minHeight:'100vh', display:'flex', alignItems:'center', justifyContent:'center', padding:'24px 16px', background:'var(--bg-base)', position:'relative', overflow:'hidden' }
+  const bg     = { minHeight:'100vh', display:'flex', alignItems:'center', justifyContent:'center', padding:'24px 16px', background:'var(--bg-base)', position:'relative', overflow:'hidden' }
   const gridBg = { position:'fixed', inset:0, pointerEvents:'none', backgroundImage:'linear-gradient(rgba(255,255,255,0.015) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,0.015) 1px,transparent 1px)', backgroundSize:'48px 48px' }
   const glow   = { position:'fixed', width:500, height:500, borderRadius:'50%', background:'radial-gradient(circle,rgba(225,29,72,0.06) 0%,transparent 70%)', top:'50%', left:'50%', transform:'translate(-50%,-50%)', pointerEvents:'none' }
   const card   = { width:'100%', maxWidth:480, position:'relative', zIndex:10, background:'#0f1020', border:'1px solid var(--border-1)', borderRadius:16, padding:'28px', boxShadow:'0 32px 80px rgba(0,0,0,0.6)' }
@@ -163,9 +131,9 @@ export default function InviteRegisterPage() {
 
   if (tokenStatus !== 'valid' || !tokenData) {
     const msgs = {
-      expired: { icon: AlertTriangle, title: 'Link Kedaluwarsa',     sub: 'Link undangan ini sudah tidak berlaku (>24 jam). Hubungi team manager untuk mendapatkan link baru.' },
-      used:    { icon: CheckCircle,   title: 'Link Sudah Digunakan', sub: 'Link undangan ini sudah dipakai. Jika ini bukan kamu, hubungi administrator.' },
-      invalid: { icon: XCircle,       title: 'Link Tidak Valid',     sub: 'Link undangan tidak ditemukan atau telah dihapus.' },
+      expired: { icon: AlertTriangle, title:'Link Kedaluwarsa',     sub:'Link undangan ini sudah tidak berlaku (>24 jam). Hubungi team manager untuk mendapatkan link baru.' },
+      used:    { icon: CheckCircle,   title:'Link Sudah Digunakan', sub:'Link undangan ini sudah dipakai. Jika ini bukan kamu, hubungi administrator.' },
+      invalid: { icon: XCircle,       title:'Link Tidak Valid',     sub:'Link undangan tidak ditemukan atau telah dihapus.' },
     }
     const { icon: Icon, title, sub } = msgs[tokenStatus] || msgs.invalid
     return (
@@ -193,18 +161,16 @@ export default function InviteRegisterPage() {
           <p style={{ fontFamily:'Syne,sans-serif', fontSize:16, fontWeight:700, color:'var(--text-primary)', marginBottom:8 }}>
             Pendaftaran Berhasil!
           </p>
-
           {isPlayer ? (
             <>
               <p style={{ fontSize:13, color:'var(--text-muted)', lineHeight:1.7, marginBottom:16 }}>
                 Pendaftaranmu ke <strong style={{ color:'var(--text-primary)' }}>{teamName}</strong> sudah diterima.
-                Tim management akan mereview dan mengapprove akunmu.
               </p>
               <div style={{ background:'rgba(251,163,21,0.07)', border:'1px solid rgba(251,163,21,0.2)', borderRadius:8, padding:'10px 14px', marginBottom:20, textAlign:'left' }}>
-                <p style={{ fontSize:12, color:'#fbbf24', lineHeight:1.6 }}>
+                <p style={{ fontSize:12, color:'#fbbf24', lineHeight:1.7 }}>
                   <strong>Langkah selanjutnya:</strong><br/>
-                  1. Cek email kamu dan verifikasi akun (cek folder spam jika tidak ada).<br/>
-                  2. Tunggu Team Manager/Super Admin mengapprove pendaftaranmu.<br/>
+                  1. Cek email &amp; klik link verifikasi dari Supabase (cek folder spam).<br/>
+                  2. Tunggu Team Manager mengapprove pendaftaranmu.<br/>
                   3. Setelah diapprove, kamu bisa login.
                 </p>
               </div>
@@ -218,17 +184,16 @@ export default function InviteRegisterPage() {
               <div style={{ background:'rgba(59,130,246,0.07)', border:'1px solid rgba(59,130,246,0.2)', borderRadius:8, padding:'10px 14px', marginBottom:20, textAlign:'left' }}>
                 <div style={{ display:'flex', gap:8, alignItems:'flex-start' }}>
                   <Mail size={14} style={{ color:'#60a5fa', flexShrink:0, marginTop:2 }}/>
-                  <p style={{ fontSize:12, color:'#60a5fa', lineHeight:1.6 }}>
+                  <p style={{ fontSize:12, color:'#60a5fa', lineHeight:1.7 }}>
                     <strong>Langkah selanjutnya:</strong><br/>
-                    1. Cek email kamu — klik link verifikasi dari Supabase (cek spam).<br/>
-                    2. Setelah verifikasi, Super Admin akan mengaktivasi akunmu.<br/>
+                    1. Cek email &amp; klik link verifikasi dari Supabase (cek spam).<br/>
+                    2. Super Admin akan mengaktivasi akunmu di halaman Approvals.<br/>
                     3. Setelah diaktivasi, kamu bisa login ke dashboard.
                   </p>
                 </div>
               </div>
             </>
           )}
-
           <button className="btn btn-primary" style={{ width:'100%', justifyContent:'center', padding:'10px' }}
             onClick={() => navigate('/login')}>
             Ke Halaman Login
@@ -244,7 +209,6 @@ export default function InviteRegisterPage() {
   return (
     <div style={bg}><div style={gridBg}/><div style={glow}/>
       <div style={{ width:'100%', maxWidth:520, position:'relative', zIndex:10 }}>
-        {/* Header */}
         <div style={{ display:'flex', flexDirection:'column', alignItems:'center', marginBottom:24 }}>
           <NXKLogo size={56}/>
           <div style={{ marginTop:16, textAlign:'center' }}>
@@ -266,7 +230,6 @@ export default function InviteRegisterPage() {
           </p>
 
           <form onSubmit={handleSubmit} style={{ display:'flex', flexDirection:'column', gap:14 }}>
-            {/* Email + Password */}
             <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:12 }}>
               <div style={{ gridColumn:'1 / -1' }}>
                 <label className="form-label">Email</label>
