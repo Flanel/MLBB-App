@@ -7,12 +7,12 @@ export function useAuth() {
   const [teamActive, setTeamActive] = useState(true)
   const [loading, setLoading]       = useState(true)
 
-  // DEBUG: two separate queries to avoid RLS issues with cross-table joins
+  // Optimized: single query with join instead of two sequential queries
   const fetchProfile = useCallback(async (userId) => {
     try {
       const { data: profile } = await supabase
         .from('users')
-        .select('role, team_id')
+        .select('role, team_id, teams(is_active)')
         .eq('id', userId)
         .single()
 
@@ -24,19 +24,12 @@ export function useAuth() {
 
       setRole(profile.role)
 
-      // Check team active status separately (only for non-super-admin with a team)
       if (profile.role !== 'super_admin' && profile.team_id) {
-        const { data: team } = await supabase
-          .from('teams')
-          .select('is_active')
-          .eq('id', profile.team_id)
-          .single()
-        setTeamActive(team?.is_active ?? true)
+        setTeamActive(profile.teams?.is_active ?? true)
       } else {
         setTeamActive(true)
       }
     } catch {
-      // DEBUG: if profile fetch fails entirely, don't block the app — let ProtectedRoute handle it
       setRole(null)
       setTeamActive(true)
     }
