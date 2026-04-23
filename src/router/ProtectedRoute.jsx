@@ -1,7 +1,6 @@
 import { Navigate, useLocation } from 'react-router-dom'
 import { useAuth } from '@/hooks/useAuth'
 
-// DEBUG: loading screen used both for initial load and role-fetch wait
 function LoadingScreen() {
   return (
     <div style={{ minHeight:'100vh', display:'flex', alignItems:'center', justifyContent:'center', background:'var(--bg-base)', flexDirection:'column', gap:16 }}>
@@ -25,16 +24,17 @@ export default function ProtectedRoute({ children, allowedRoles }) {
   const { user, role, teamActive, loading } = useAuth()
   const location = useLocation()
 
-  // DEBUG: still fetching session or profile — show loader, never redirect prematurely
+  // Still fetching session — never redirect prematurely
   if (loading) return <LoadingScreen />
 
   // Not authenticated
   if (!user) return <Navigate to="/login" replace />
 
-  // DEBUG: user exists but role not yet resolved — wait (prevents null-role redirect loop)
-  if (role === null) return <LoadingScreen />
+  // DEBUG: user exists but role fetch failed or is still null after loading
+  // Redirect to login rather than loop forever on loading screen
+  if (role === null) return <Navigate to="/login" replace />
 
-  // Bug 4 fix: deactivated team blocks non-super-admin access immediately
+  // Bug 4 fix: deactivated team blocks access immediately
   if (!teamActive && role !== 'super_admin') {
     return <Navigate to="/login?reason=deactivated" state={{ from: location }} replace />
   }

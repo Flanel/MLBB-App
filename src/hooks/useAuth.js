@@ -2,24 +2,41 @@ import { useEffect, useState, useCallback } from 'react'
 import { supabase } from '@/lib/supabase'
 
 export function useAuth() {
-  const [user, setUser]           = useState(null)
-  const [role, setRole]           = useState(null)
+  const [user, setUser]             = useState(null)
+  const [role, setRole]             = useState(null)
   const [teamActive, setTeamActive] = useState(true)
-  const [loading, setLoading]     = useState(true)
+  const [loading, setLoading]       = useState(true)
 
-  // DEBUG: fetch role + team active status in one query to avoid race condition
+  // DEBUG: two separate queries to avoid RLS issues with cross-table joins
   const fetchProfile = useCallback(async (userId) => {
-    const { data } = await supabase
-      .from('users')
-      .select('role, team_id, teams(is_active)')
-      .eq('id', userId)
-      .single()
+    try {
+      const { data: profile } = await supabase
+        .from('users')
+        .select('role, team_id')
+        .eq('id', userId)
+        .single()
 
-    if (data) {
-      setRole(data.role)
-      // Super admin has no team — always active
-      setTeamActive(data.role === 'super_admin' ? true : (data.teams?.is_active ?? true))
-    } else {
+      if (!profile) {
+        setRole(null)
+        setTeamActive(true)
+        return
+      }
+
+      setRole(profile.role)
+
+      // Check team active status separately (only for non-super-admin with a team)
+      if (profile.role !== 'super_admin' && profile.team_id) {
+        const { data: team } = await supabase
+          .from('teams')
+          .select('is_active')
+          .eq('id', profile.team_id)
+          .single()
+        setTeamActive(team?.is_active ?? true)
+      } else {
+        setTeamActive(true)
+      }
+    } catch {
+      // DEBUG: if profile fetch fails entirely, don't block the app — let ProtectedRoute handle it
       setRole(null)
       setTeamActive(true)
     }
@@ -28,7 +45,6 @@ export function useAuth() {
   useEffect(() => {
     let mounted = true
 
-    // DEBUG: initial session check — sets loading=false only after profile is fetched
     supabase.auth.getSession().then(async ({ data: { session } }) => {
       if (!mounted) return
       const u = session?.user ?? null
