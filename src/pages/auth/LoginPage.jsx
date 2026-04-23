@@ -2,12 +2,6 @@ import { useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { supabase } from '@/lib/supabase'
 import { Eye, EyeOff, Mail, AlertTriangle } from 'lucide-react'
-import NXKLogo from '@/components/layout/NXKLogo'
-
-const ROLE_REDIRECT = {
-  super_admin: '/super-admin', team_manager: '/team-manager',
-  staff: '/team-manager', player: '/player',
-}
 
 export default function LoginPage() {
   const [email, setEmail]         = useState('')
@@ -19,7 +13,6 @@ export default function LoginPage() {
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
 
-  // Bug 4 fix: show deactivated banner when redirected from ProtectedRoute
   const isDeactivated = searchParams.get('reason') === 'deactivated'
 
   async function handleSubmit(e) {
@@ -28,6 +21,7 @@ export default function LoginPage() {
     setErrorType('')
     setLoading(true)
 
+    // Step 1: Auth
     const { data, error: authError } = await supabase.auth.signInWithPassword({ email, password })
 
     if (authError) {
@@ -43,6 +37,8 @@ export default function LoginPage() {
       return
     }
 
+    // Step 2: Validasi profile & status akun
+    // Dilakukan di LoginPage agar bisa tampilkan error sebelum masuk dashboard
     const { data: profile } = await supabase
       .from('users')
       .select('role, team_id, is_active')
@@ -80,7 +76,11 @@ export default function LoginPage() {
       }
     }
 
-    navigate(ROLE_REDIRECT[profile?.role] || '/player', { replace: true })
+    // Step 3: Navigasi ke /dashboard — DashboardRedirect akan handle redirect
+    // berdasarkan role yang sudah di-load AuthContext.
+    // Jangan navigate langsung ke /super-admin dll karena AuthContext mungkin
+    // masih fetchProfile dan ProtectedRoute akan terima role=null.
+    navigate('/dashboard', { replace: true })
   }
 
   return (
@@ -99,7 +99,6 @@ export default function LoginPage() {
           <p style={{ fontSize:11, letterSpacing:'0.18em', color:'var(--text-dim)', fontFamily:'Syne,sans-serif', marginTop:2 }}>ESPORTS MANAGEMENT</p>
         </div>
 
-        {/* Bug 4: Deactivated redirect banner */}
         {isDeactivated && (
           <div style={{ background:'rgba(255,77,109,0.08)', border:'1px solid rgba(255,77,109,0.22)', borderRadius:10, padding:'12px 16px', marginBottom:16, display:'flex', alignItems:'center', gap:10, color:'var(--red)', fontSize:13 }}>
             <AlertTriangle size={15} style={{ flexShrink:0 }} />
