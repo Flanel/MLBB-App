@@ -63,7 +63,13 @@ export function AuthProvider({ children }) {
       setUser(u)
 
       if (u) {
-        if (event !== 'TOKEN_REFRESHED') {
+        if (event === 'SIGNED_IN') {
+          // Pastikan loading=true saat fetch profile setelah login
+          // agar ProtectedRoute tidak redirect ke /login karena role masih null
+          setLoading(true)
+          await fetchProfile(u.id)
+          if (mounted) setLoading(false)
+        } else if (event !== 'TOKEN_REFRESHED') {
           await fetchProfile(u.id)
         }
       } else {
@@ -72,7 +78,7 @@ export function AuthProvider({ children }) {
       }
 
       if (!initializedRef.current) {
-        setLoading(false)
+        if (mounted) setLoading(false)
         initializedRef.current = true
       }
     })

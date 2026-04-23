@@ -23,9 +23,15 @@ export default function ProtectedRoute({ children, allowedRoles }) {
   const { user, role, teamActive, loading } = useAuth()
   const location = useLocation()
 
+  // Masih inisialisasi (getSession / fetchProfile belum selesai)
   if (loading) return <LoadingScreen />
+
+  // Belum login sama sekali
   if (!user) return <Navigate to="/login" replace />
-  if (role === null) return <Navigate to="/login" replace />
+
+  // User ada tapi role belum di-load (fetchProfile masih jalan setelah SIGNED_IN)
+  // Tampilkan loading, JANGAN redirect ke /login — ini yang menyebabkan login loop sebelumnya
+  if (role === null) return <LoadingScreen />
 
   if (!teamActive && role !== 'super_admin') {
     return <Navigate to="/login?reason=deactivated" state={{ from: location }} replace />
