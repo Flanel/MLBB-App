@@ -9,8 +9,7 @@ export function AuthProvider({ children }) {
   const [teamActive, setTeamActive] = useState(true)
   const [loading, setLoading]       = useState(true)
 
-  // Ref to prevent duplicate fetchProfile calls (e.g. getSession + onAuthStateChange firing simultaneously)
-  const fetchingRef = useRef(false)
+  const fetchingRef    = useRef(false)
   const initializedRef = useRef(false)
 
   const fetchProfile = useCallback(async (userId) => {
@@ -47,7 +46,6 @@ export function AuthProvider({ children }) {
   useEffect(() => {
     let mounted = true
 
-    // Inisialisasi: ambil session sekali saja
     supabase.auth.getSession().then(async ({ data: { session } }) => {
       if (!mounted) return
       const u = session?.user ?? null
@@ -57,20 +55,14 @@ export function AuthProvider({ children }) {
       initializedRef.current = true
     })
 
-    // Listen perubahan auth (login/logout/token refresh)
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
       if (!mounted) return
-
-      // Skip INITIAL_SESSION karena sudah ditangani getSession() di atas
-      // Ini mencegah double-fetch saat pertama load
       if (event === 'INITIAL_SESSION') return
 
       const u = session?.user ?? null
       setUser(u)
 
       if (u) {
-        // Hanya fetch profile jika bukan sekadar token refresh (SIGNED_IN dari persist)
-        // TOKEN_REFRESHED tidak perlu re-fetch profile
         if (event !== 'TOKEN_REFRESHED') {
           await fetchProfile(u.id)
         }
@@ -79,7 +71,6 @@ export function AuthProvider({ children }) {
         setTeamActive(true)
       }
 
-      // Pastikan loading false setelah event apapun
       if (!initializedRef.current) {
         setLoading(false)
         initializedRef.current = true
