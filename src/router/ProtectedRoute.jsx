@@ -1,48 +1,74 @@
-import { Navigate, useLocation } from 'react-router-dom'
-import { useAuth } from '@/hooks/useAuth'
+import { useEffect, useState, useCallback } from 'react'
+import { supabase } from '@/lib/supabase'
 
-function LoadingScreen() {
-  return (
-    <div style={{ minHeight:'100vh', display:'flex', alignItems:'center', justifyContent:'center', background:'var(--bg-base)', flexDirection:'column', gap:16 }}>
-      <div style={{ width:36, height:36, borderRadius:10, background:'var(--bg-elevated)', border:'1px solid var(--border-2)', display:'flex', alignItems:'center', justifyContent:'center' }}>
-        <svg width="20" height="20" viewBox="0 0 28 28" fill="none">
-          <path d="M4 18L7 10L11 15L14 7L17 15L21 10L24 18H4Z" fill="none" stroke="var(--text-secondary)" strokeWidth="1.5" strokeLinejoin="round"/>
-          <circle cx="14" cy="7" r="2" fill="var(--brand)"/>
-        </svg>
-      </div>
-      <div style={{ display:'flex', gap:5 }}>
-        {[0,1,2].map(i => (
-          <span key={i} style={{ width:5, height:5, borderRadius:'50%', background:'var(--brand)', opacity:0.5,
-            animation:`fadeUp 0.8s ease ${i*0.2}s infinite alternate` }} />
-        ))}
-      </div>
-    </div>
-  )
-}
+export function useAuth() {
+  const [user, setUser]             = useState(null)
+  const [role, setRole]             = useState(null)
+  const [teamActive, setTeamActive] = useState(true)
+  const [loading, setLoading]       = useState(true)
 
-export default function ProtectedRoute({ children, allowedRoles }) {
-  const { user, role, teamActive, loading } = useAuth()
-  const location = useLocation()
+  const fetchProfile = useCallback(async (userId) => {
+    try {
+      const { data: profile } = await supabase
+        .from('users')
+        .select('role, team_id')
+        .eq('id', userId)
+        .single()
 
-  // Still fetching session — never redirect prematurely
-  if (loading) return <LoadingScreen />
+      if (!profile) { setRole(null); setTeamActive(true); return }
 
-  // Not authenticated
-  if (!user) return <Navigate to="/login" replace />
+      setRole(profile.role)
 
-  // DEBUG: user exists but role fetch failed or is still null after loading
-  // Redirect to login rather than loop forever on loading screen
-  if (role === null) return <Navigate to="/login" replace />
+      if (profile.role !== 'super_admin' && profile.team_id) {
+        const { data: team } = await supabase
+          .from('teams')
+          .select('is_active')
+          .eq('id', profile.team_id)
+          .single()
+        setTeamActive(team?.is_active ?? true)
+      } else {
+        setTeamActive(true)
+      }
+    } catch {
+      setRole(null)
+      setTeamActive(true)
+    }
+  }, [])
 
-  // Bug 4 fix: deactivated team blocks access immediately
-  if (!teamActive && role !== 'super_admin') {
-    return <Navigate to="/login?reason=deactivated" state={{ from: location }} replace />
+  useEffect(() => {
+    // DEBUG: Supabase v2 fires INITIAL_SESSION immediately on subscribe.
+    // Using ONLY onAuthStateChange (no getSession) avoids the StrictMode
+    // race condition where getSession's setLoading(false) gets swallowed
+    // because mounted=false after the first effect unmount.
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      async (event, session) => {
+        const u = session?.user ?? null
+        setUser(u)
+
+        if (u) {
+          await fetchProfile(u.id)
+        } else {
+          setRole(null)
+          setTeamActive(true)
+        }
+
+        // INITIAL_SESSION fires once at startup — this is the correct place
+        // to turn off loading, regardless of whether user is logged in or not
+        if (event === 'INITIAL_SESSION') {
+          setLoading(false)
+        }
+      }
+    )
+
+    return () => subscription.unsubscribe()
+  }, [fetchProfile])
+
+  async function signOut() {
+    await supabase.auth.signOut()
+    setUser(null)
+    setRole(null)
+    setTeamActive(true)
   }
 
-  // Role-based access guard
-  if (allowedRoles && !allowedRoles.includes(role)) {
-    return <Navigate to="/dashboard" replace />
-  }
-
-  return children
+  return { user, role, teamActive, loading, signOut }
 }
