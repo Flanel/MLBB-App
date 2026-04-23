@@ -81,7 +81,7 @@ export default function Sidebar({ mobileOpen, onMobileClose }) {
 
   const sidebarStyle = {
     width: 'var(--sidebar-width)',
-    background: '#0c0d18',
+    background: '#060810',
     borderRight: '1px solid var(--border-1)',
     display: 'flex',
     flexDirection: 'column',
@@ -150,7 +150,7 @@ export default function Sidebar({ mobileOpen, onMobileClose }) {
 
         {/* User footer */}
         <div style={{ padding:'10px 12px', borderTop:'1px solid var(--border-1)', display:'flex', alignItems:'center', gap:8, flexShrink:0 }}>
-          <div style={{ width:28, height:28, borderRadius:8, background:'rgba(225,29,72,0.12)', border:'1px solid rgba(225,29,72,0.2)', display:'flex', alignItems:'center', justifyContent:'center', fontSize:10, fontWeight:700, color:'#fb4c6c', fontFamily:'Syne,sans-serif', flexShrink:0 }}>
+          <div style={{ width:28, height:28, borderRadius:8, background:'var(--brand-glow)', border:'1px solid var(--brand-border)', display:'flex', alignItems:'center', justifyContent:'center', fontSize:10, fontWeight:700, color:'var(--brand)', fontFamily:'Syne,sans-serif', flexShrink:0 }}>
             {initials}
           </div>
           <div style={{ flex:1, minWidth:0 }}>

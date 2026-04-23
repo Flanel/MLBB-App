@@ -16,7 +16,9 @@ export default function OverviewPage() {
       const [{ data: teamsData }, { data: usersData }, { data: matchesData }, { data: logsData }] = await Promise.all([
         supabase.from('teams').select('id, name, is_active, created_at').order('created_at', { ascending: false }),
         supabase.from('users').select('id', { count: 'exact', head: true }),
-        supabase.from('matches').select('id', { count: 'exact', head: true }),
+        // DEBUG: filter to current month only so label "Bulan ini" is accurate
+        supabase.from('matches').select('id', { count: 'exact', head: true })
+          .gte('created_at', new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString()),
         supabase.from('audit_logs').select('*, users(name, role)').order('created_at', { ascending: false }).limit(6),
       ])
       setTeams(teamsData || [])

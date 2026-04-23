@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
-import { Users, Edit2, Trash2, Power, RefreshCw } from 'lucide-react'
+import { Users, Edit2, Trash2, Power, RefreshCw, Database } from 'lucide-react'
 import DashboardLayout from '@/components/layout/DashboardLayout'
 import TeamFormModal from '@/components/super-admin/TeamFormModal'
 import DeactivateModal from '@/components/super-admin/DeactivateModal'
@@ -7,6 +7,7 @@ import DeleteTeamModal from '@/components/super-admin/DeleteTeamModal'
 import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/hooks/useAuth'
 import { useToast } from '@/hooks/useToast'
+import { Link } from 'react-router-dom'
 
 async function logAudit(userId, action, target) {
   await supabase.from('audit_logs').insert({ user_id: userId, action, target })
@@ -93,14 +94,47 @@ export default function TeamsPage() {
 
   async function handleDelete() {
     setBusy(true)
-    const { error } = await supabase.from('teams').delete().eq('id', deleteTarget.id)
-    if (error) { addToast({ message: `Gagal: ${error.message}`, type: 'danger' }) }
-    else {
+    const tid = deleteTarget.id
+
+    // DEBUG: cascade delete in dependency order to avoid FK constraint errors
+    try {
+      // 1. schedule_availability (depends on schedules)
+      const { data: schIds } = await supabase.from('schedules').select('id').eq('team_id', tid)
+      if (schIds?.length) {
+        await supabase.from('schedule_availability').delete().in('schedule_id', schIds.map(s => s.id))
+      }
+      // 2. schedules
+      await supabase.from('schedules').delete().eq('team_id', tid)
+      // 3. match_player_stats (depends on matches)
+      const { data: mIds } = await supabase.from('matches').select('id').eq('team_id', tid)
+      if (mIds?.length) {
+        await supabase.from('match_player_stats').delete().in('match_id', mIds.map(m => m.id))
+      }
+      // 4. matches
+      await supabase.from('matches').delete().eq('team_id', tid)
+      // 5. player_activities for users in this team
+      const { data: uIds } = await supabase.from('users').select('id').eq('team_id', tid)
+      if (uIds?.length) {
+        await supabase.from('player_activities').delete().in('user_id', uIds.map(u => u.id))
+      }
+      // 6. player_applications
+      await supabase.from('player_applications').delete().eq('team_id', tid)
+      // 7. invite_tokens
+      await supabase.from('invite_tokens').delete().eq('team_id', tid)
+      // 8. tournaments
+      await supabase.from('tournaments').delete().eq('team_id', tid)
+      // 9. finally delete team
+      const { error } = await supabase.from('teams').delete().eq('id', tid)
+      if (error) throw error
+
       setTeams(prev => prev.filter(t => t.id !== deleteTarget.id))
       await logAudit(user?.id, 'Hapus tim', deleteTarget.name)
       addToast({ message: `"${deleteTarget.name}" dihapus permanen.`, type: 'success' })
       setDeleteTarget(null)
+    } catch (err) {
+      addToast({ message: `Gagal menghapus: ${err.message}`, type: 'danger' })
     }
+
     setBusy(false)
   }
 
@@ -184,6 +218,9 @@ export default function TeamsPage() {
                     </td>
                     <td className="table-td">
                       <div style={{ display:'flex', gap:6, flexWrap:'wrap' }}>
+                        <Link to={`/super-admin/teams/${team.id}/data`} className="btn btn-cyan" style={{ fontSize:11, padding:'4px 8px', gap:4 }}>
+                          <Database size={10}/>Explorer
+                        </Link>
                         <button className="btn" style={{ fontSize:11, padding:'4px 8px', gap:4 }} onClick={() => setEditTarget(team)}>
                           <Edit2 size={10}/>Edit
                         </button>

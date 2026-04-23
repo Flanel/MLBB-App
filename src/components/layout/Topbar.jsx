@@ -4,7 +4,7 @@ export default function Topbar({ title, subtitle, onMenuClick }) {
   return (
     <header style={{
       height: 'var(--topbar-height)',
-      background: '#0c0d18',
+      background: 'var(--bg-deep)',
       borderBottom: '1px solid var(--border-1)',
       display: 'flex', alignItems: 'center', gap: 12,
       padding: '0 20px', flexShrink: 0,

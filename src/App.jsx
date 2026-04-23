@@ -16,6 +16,7 @@ import AuditPage       from '@/pages/dashboard/super-admin/AuditPage'
 import SettingsPage    from '@/pages/dashboard/super-admin/SettingsPage'
 import SAInvitePage    from '@/pages/dashboard/super-admin/InvitePage'
 import SAApprovalsPage from '@/pages/dashboard/super-admin/ApprovalsPage'
+import TeamDataPage     from '@/pages/dashboard/super-admin/TeamDataPage'
 
 // Team Manager
 import TmDashboard     from '@/pages/dashboard/team-manager/DashboardPage'
@@ -66,6 +67,7 @@ export default function App() {
         <Route path="/super-admin/settings"  element={<ProtectedRoute allowedRoles={SA}><SettingsPage /></ProtectedRoute>} />
         <Route path="/super-admin/invite"    element={<ProtectedRoute allowedRoles={SA}><SAInvitePage /></ProtectedRoute>} />
         <Route path="/super-admin/approvals" element={<ProtectedRoute allowedRoles={SA}><SAApprovalsPage /></ProtectedRoute>} />
+        <Route path="/super-admin/teams/:teamId/data" element={<ProtectedRoute allowedRoles={SA}><TeamDataPage /></ProtectedRoute>} />
 
         {/* Team Manager + Staff */}
         <Route path="/team-manager"             element={<ProtectedRoute allowedRoles={TMS}><TmDashboard /></ProtectedRoute>} />
