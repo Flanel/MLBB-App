@@ -46,14 +46,19 @@ const ALL = ['super_admin','team_manager','staff','player']
 // Fix: tampilkan null (spinner sudah ada di ProtectedRoute) jika role belum ada.
 function DashboardRedirect() {
   const { role, loading } = useAuth()
+  console.log('🧭 [DashboardRedirect] loading:', loading, '| role:', role)
   // Jika masih loading ATAU role belum ter-set, tunggu — jangan redirect prematur.
-  if (loading || !role) return null
+  if (loading || !role) {
+    console.log('🧭 [DashboardRedirect] → waiting (loading or no role)')
+    return null
+  }
   const map = {
     super_admin:  '/super-admin',
     team_manager: '/team-manager',
     staff:        '/team-manager',
     player:       '/player',
   }
+  console.log('🧭 [DashboardRedirect] → navigating to', map[role] || '/super-admin')
   return <Navigate to={map[role] || '/super-admin'} replace />
 }
 

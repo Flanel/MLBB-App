@@ -1,14 +1,4 @@
-// FIX BUG #1 (v2): Complete rewrite — single-path auth initialization.
-//
-// Root cause of "stuck loading on refresh":
-//   The old code had TWO parallel paths: init() + onAuthStateChange.
-//   They raced against each other, causing loading state to get stuck.
-//
-// Fix: Use onAuthStateChange as the ONLY source of truth.
-//   - INITIAL_SESSION handles page refresh (fires immediately with stored session)
-//   - SIGNED_IN handles explicit login
-//   - TOKEN_REFRESHED is skipped (no profile change)
-//   - No separate init() function → no race condition
+// 🔍 DEBUG VERSION — hapus console.log setelah bug ditemukan
 
 import { createContext, useContext, useEffect, useState, useCallback } from 'react'
 import { supabase } from '@/lib/supabase'
@@ -21,7 +11,10 @@ export function AuthProvider({ children }) {
   const [teamActive, setTeamActive] = useState(true)
   const [loading, setLoading]       = useState(true)
 
+  console.log('🔄 [AuthProvider] render → loading:', loading, '| user:', user?.email || null, '| role:', role)
+
   const fetchProfile = useCallback(async (userId) => {
+    console.log('📡 [fetchProfile] START → userId:', userId)
     try {
       const { data: profile, error } = await supabase
         .from('users')
@@ -29,12 +22,16 @@ export function AuthProvider({ children }) {
         .eq('id', userId)
         .single()
 
+      console.log('📡 [fetchProfile] RESPONSE → profile:', profile, '| error:', error)
+
       if (error || !profile) {
+        console.warn('⚠️ [fetchProfile] No profile found or error! Setting role=null')
         setRole(null)
         setTeamActive(true)
         return
       }
 
+      console.log('✅ [fetchProfile] Setting role:', profile.role)
       setRole(profile.role)
 
       if (profile.role !== 'super_admin' && profile.team_id) {
@@ -42,7 +39,8 @@ export function AuthProvider({ children }) {
       } else {
         setTeamActive(true)
       }
-    } catch {
+    } catch (err) {
+      console.error('❌ [fetchProfile] CATCH error:', err)
       setRole(null)
       setTeamActive(true)
     }
@@ -50,35 +48,50 @@ export function AuthProvider({ children }) {
 
   useEffect(() => {
     let mounted = true
+    console.log('🟢 [AuthProvider] useEffect MOUNT')
 
-    // Single event handler — no separate init() needed
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
-      if (!mounted) return
+      console.log('🔔 [onAuthStateChange] event:', event, '| session user:', session?.user?.email || null, '| mounted:', mounted)
 
-      // Token refresh doesn't change the user profile
-      if (event === 'TOKEN_REFRESHED') return
+      if (!mounted) {
+        console.log('🚫 [onAuthStateChange] NOT mounted, skipping')
+        return
+      }
+
+      if (event === 'TOKEN_REFRESHED') {
+        console.log('🔄 [onAuthStateChange] TOKEN_REFRESHED → skip profile fetch')
+        return
+      }
 
       const u = session?.user ?? null
+      console.log('👤 [onAuthStateChange] setUser →', u?.email || null)
       setUser(u)
 
       if (u) {
+        console.log('📡 [onAuthStateChange] Calling fetchProfile...')
         await fetchProfile(u.id)
+        console.log('📡 [onAuthStateChange] fetchProfile DONE')
       } else {
+        console.log('👤 [onAuthStateChange] No user → clearing role')
         setRole(null)
         setTeamActive(true)
       }
 
-      // Always resolve loading after processing
-      if (mounted) setLoading(false)
+      if (mounted) {
+        console.log('✅ [onAuthStateChange] setLoading(false)')
+        setLoading(false)
+      }
     })
 
     return () => {
+      console.log('🔴 [AuthProvider] useEffect CLEANUP')
       mounted = false
       subscription.unsubscribe()
     }
   }, [fetchProfile])
 
   async function signOut() {
+    console.log('🚪 [signOut] called')
     await supabase.auth.signOut()
     setUser(null)
     setRole(null)

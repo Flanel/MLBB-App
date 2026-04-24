@@ -1,3 +1,5 @@
+// 🔍 DEBUG VERSION
+
 import { Navigate, useLocation } from 'react-router-dom'
 import { useAuth } from '@/hooks/useAuth'
 
@@ -23,23 +25,33 @@ export default function ProtectedRoute({ children, allowedRoles }) {
   const { user, role, teamActive, loading } = useAuth()
   const location = useLocation()
 
-  // Still initializing (onAuthStateChange hasn't resolved yet)
-  if (loading) return <LoadingScreen />
+  console.log('🛡️ [ProtectedRoute] path:', location.pathname, '| loading:', loading, '| user:', user?.email || null, '| role:', role, '| teamActive:', teamActive)
 
-  // Not logged in
-  if (!user) return <Navigate to="/login" replace />
+  if (loading) {
+    console.log('🛡️ [ProtectedRoute] → SHOWING LoadingScreen (loading=true)')
+    return <LoadingScreen />
+  }
 
-  // User exists but no profile in database (fetchProfile returned null)
-  // Since loading is already false, fetchProfile has completed — redirect immediately
-  if (role === null) return <Navigate to="/login" replace />
+  if (!user) {
+    console.log('🛡️ [ProtectedRoute] → REDIRECT /login (no user)')
+    return <Navigate to="/login" replace />
+  }
+
+  if (role === null) {
+    console.log('🛡️ [ProtectedRoute] → REDIRECT /login (role=null, profile not found)')
+    return <Navigate to="/login" replace />
+  }
 
   if (!teamActive && role !== 'super_admin') {
+    console.log('🛡️ [ProtectedRoute] → REDIRECT /login?reason=deactivated')
     return <Navigate to="/login?reason=deactivated" state={{ from: location }} replace />
   }
 
   if (allowedRoles && !allowedRoles.includes(role)) {
+    console.log('🛡️ [ProtectedRoute] → REDIRECT /dashboard (role not allowed)')
     return <Navigate to="/dashboard" replace />
   }
 
+  console.log('🛡️ [ProtectedRoute] → ✅ RENDERING children')
   return children
 }
