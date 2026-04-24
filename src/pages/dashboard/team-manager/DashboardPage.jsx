@@ -1,3 +1,7 @@
+// FIX BUG #3: Supabase { count: 'exact', head: true } mengembalikan data: null.
+// Sebelumnya: playerData?.length dan tournData?.length → selalu 0.
+// Fix: destructure `count` langsung dari response.
+
 import { useState, useEffect } from 'react'
 import DashboardLayout from '@/components/layout/DashboardLayout'
 import KpiCard from '@/components/ui/KpiCard'
@@ -7,33 +11,46 @@ import { TrendingUp, Users, Swords, Trophy } from 'lucide-react'
 
 export default function TmDashboardPage() {
   const { user } = useAuth()
-  const [teamName, setTeamName]   = useState('Tim Kamu')
-  const [matches, setMatches]     = useState([])
-  const [stats, setStats]         = useState({ winRate: 0, total: 0, players: 0, tournaments: 0 })
-  const [loading, setLoading]     = useState(true)
+  const [teamName, setTeamName] = useState('Tim Kamu')
+  const [matches, setMatches]   = useState([])
+  const [stats, setStats]       = useState({ winRate: 0, total: 0, players: 0, tournaments: 0 })
+  const [loading, setLoading]   = useState(true)
 
   useEffect(() => {
     async function load() {
       if (!user) return
-      const { data: profile } = await supabase.from('users').select('team_id, teams(name)').eq('id', user.id).single()
+      const { data: profile } = await supabase
+        .from('users').select('team_id, teams(name)').eq('id', user.id).single()
       if (!profile?.team_id) { setLoading(false); return }
+
       const tid = profile.team_id
       setTeamName(profile.teams?.name || 'Tim Kamu')
 
-      const [{ data: matchData }, { data: playerData }, { data: tournData }] = await Promise.all([
-        supabase.from('matches').select('result, opponent, tournament, date').eq('team_id', tid).order('date', { ascending: false }).limit(10),
-        supabase.from('users').select('id', { count: 'exact', head: true }).eq('team_id', tid).eq('role', 'player'),
-        supabase.from('tournaments').select('id', { count: 'exact', head: true }).eq('team_id', tid),
+      // FIX BUG #3: destructure `count` bukan `data` untuk head:true queries
+      const [
+        { data: matchData },
+        { count: playersCount },
+        { count: tournamentsCount },
+      ] = await Promise.all([
+        supabase.from('matches')
+          .select('result, opponent, tournament, date')
+          .eq('team_id', tid).order('date', { ascending: false }).limit(10),
+        supabase.from('users')
+          .select('*', { count: 'exact', head: true })
+          .eq('team_id', tid).eq('role', 'player'),
+        supabase.from('tournaments')
+          .select('*', { count: 'exact', head: true })
+          .eq('team_id', tid),
       ])
 
-      const mx = matchData || []
+      const mx   = matchData || []
       const wins = mx.filter(m => m.result === 'Win').length
       setMatches(mx)
       setStats({
-        winRate: mx.length ? Math.round((wins / mx.length) * 100) : 0,
-        total: mx.length,
-        players: playerData?.length || 0,
-        tournaments: tournData?.length || 0,
+        winRate:     mx.length ? Math.round((wins / mx.length) * 100) : 0,
+        total:       mx.length,
+        players:     playersCount     || 0,  // ✓ angka benar
+        tournaments: tournamentsCount || 0,  // ✓ angka benar
       })
       setLoading(false)
     }
@@ -48,10 +65,10 @@ export default function TmDashboardPage() {
       </div>
 
       <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit,minmax(170px,1fr))', gap:12, marginBottom:20 }}>
-        <KpiCard label="Win Rate" value={loading ? '—' : `${stats.winRate}%`} sub="Dari semua match" variant="up" icon={TrendingUp} />
-        <KpiCard label="Total Match" value={loading ? '—' : stats.total} sub="Season ini" variant="neutral" icon={Swords} />
-        <KpiCard label="Pemain Aktif" value={loading ? '—' : stats.players} variant="neutral" icon={Users} />
-        <KpiCard label="Tournament" value={loading ? '—' : stats.tournaments} variant="neutral" icon={Trophy} />
+        <KpiCard label="Win Rate"     value={loading ? '—' : `${stats.winRate}%`} sub="Dari semua match" variant="up"      icon={TrendingUp} />
+        <KpiCard label="Total Match"  value={loading ? '—' : stats.total}         sub="Season ini"      variant="neutral" icon={Swords} />
+        <KpiCard label="Pemain Aktif" value={loading ? '—' : stats.players}                             variant="neutral" icon={Users} />
+        <KpiCard label="Tournament"   value={loading ? '—' : stats.tournaments}                         variant="neutral" icon={Trophy} />
       </div>
 
       <div className="card">
@@ -63,7 +80,9 @@ export default function TmDashboardPage() {
         ) : (
           <div style={{ overflowX:'auto' }}>
             <table style={{ width:'100%' }}>
-              <thead><tr>{['Lawan','Hasil','Tournament','Tanggal'].map(h=><th key={h} className="table-th">{h}</th>)}</tr></thead>
+              <thead>
+                <tr>{['Lawan','Hasil','Tournament','Tanggal'].map(h => <th key={h} className="table-th">{h}</th>)}</tr>
+              </thead>
               <tbody>
                 {matches.map((m, i) => (
                   <tr key={i}>

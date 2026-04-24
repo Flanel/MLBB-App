@@ -1,3 +1,8 @@
+// FIX BUG #5: Mobile sidebar backdrop memiliki display:'none' hardcoded di
+// inline style, yang selalu meng-override CSS class `.mobile-backdrop`.
+// Akibatnya backdrop tidak pernah muncul dan click-outside tidak berfungsi.
+// Fix: hapus display:'none' dari inline style, biarkan CSS class yang mengontrol.
+
 import { NavLink } from 'react-router-dom'
 import { useAuth } from '@/hooks/useAuth'
 import { NXKLogoMark } from '@/components/layout/NXKLogo'
@@ -76,7 +81,7 @@ const roleLabels = {
 
 export default function Sidebar({ mobileOpen, onMobileClose }) {
   const { user, role, signOut } = useAuth()
-  const groups = navConfig[role] || []
+  const groups  = navConfig[role] || []
   const initials = (user?.email || 'NK').slice(0, 2).toUpperCase()
 
   const sidebarStyle = {
@@ -91,16 +96,19 @@ export default function Sidebar({ mobileOpen, onMobileClose }) {
 
   return (
     <>
+      {/* FIX BUG #5: hapus display:'none' dari inline style.
+          CSS class 'mobile-backdrop' di index.css sudah mengatur display:none/block
+          berdasarkan breakpoint. Inline style sebelumnya selalu override CSS. */}
       {mobileOpen && (
         <div
           onClick={onMobileClose}
-          style={{ display: 'none', position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.7)', zIndex: 30 }}
+          style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.7)', zIndex: 30 }}
           className="mobile-backdrop"
         />
       )}
 
       <aside className={`app-sidebar${mobileOpen ? ' open' : ''}`} style={sidebarStyle}>
-        {/* Logo — uses real NXK logo */}
+        {/* Logo */}
         <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', padding:'12px 14px', borderBottom:'1px solid var(--border-1)', flexShrink:0 }}>
           <div style={{ display:'flex', alignItems:'center', gap:8 }}>
             <div style={{ width:32, height:32, borderRadius:8, overflow:'hidden', flexShrink:0 }}>

@@ -1,6 +1,18 @@
-import { useState } from 'react'
+// FIX BUG #1: Hapus navigate() manual setelah signInWithPassword.
+//
+// Bug sebelumnya:
+//   navigate('/dashboard') dipanggil segera setelah signInWithPassword resolve,
+//   SEBELUM AuthContext sempat memproses SIGNED_IN event. Akibatnya ProtectedRoute
+//   melihat user=null → redirect kembali ke /login → loop atau stuck loading.
+//
+// Fix:
+//   Gunakan useEffect yang watch `user` dari AuthContext. Navigate hanya terjadi
+//   SETELAH AuthContext benar-benar set user (yaitu saat SIGNED_IN sudah diproses).
+
+import { useState, useEffect } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { supabase } from '@/lib/supabase'
+import { useAuth } from '@/hooks/useAuth'
 import { Eye, EyeOff, Mail, AlertTriangle } from 'lucide-react'
 
 export default function LoginPage() {
@@ -13,7 +25,17 @@ export default function LoginPage() {
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
 
+  // FIX BUG #1: ambil user dari AuthContext
+  const { user } = useAuth()
+
   const isDeactivated = searchParams.get('reason') === 'deactivated'
+
+  // FIX BUG #1: navigate hanya setelah AuthContext set user (SIGNED_IN sudah diproses)
+  useEffect(() => {
+    if (user) {
+      navigate('/dashboard', { replace: true })
+    }
+  }, [user, navigate])
 
   async function handleSubmit(e) {
     e.preventDefault()
@@ -57,7 +79,7 @@ export default function LoginPage() {
       await supabase.auth.signOut()
       setError(profile.role === 'player'
         ? 'Akunmu masih menunggu approval dari management tim.'
-        : 'Akunmu belum diaktivasi. Hubungi Super Admin.'
+        : 'Akunmu belum diaktivasi. Hubungi Super Admin.',
       )
       setErrorType('inactive')
       setLoading(false)
@@ -76,11 +98,10 @@ export default function LoginPage() {
       }
     }
 
-    // Step 3: Navigasi ke /dashboard — DashboardRedirect akan handle redirect
-    // berdasarkan role yang sudah di-load AuthContext.
-    // Jangan navigate langsung ke /super-admin dll karena AuthContext mungkin
-    // masih fetchProfile dan ProtectedRoute akan terima role=null.
-    navigate('/dashboard', { replace: true })
+    // Step 3: JANGAN navigate manual di sini.
+    // useEffect di atas akan otomatis navigate ke /dashboard
+    // setelah AuthContext memproses SIGNED_IN dan set user.
+    // setLoading dibiarkan true supaya tombol tetap disabled selama redirect.
   }
 
   return (

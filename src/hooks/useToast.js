@@ -1,19 +1,3 @@
-import { useState, useCallback } from 'react'
-
-let _setToasts = null
-const listeners = []
-
-export function useToast() {
-  const [toasts, setToasts] = useState([])
-
-  const addToast = useCallback(({ message, type = 'success' }) => {
-    const id = Date.now() + Math.random()
-    setToasts(prev => [...prev, { id, message, type }])
-  }, [])
-
-  const removeToast = useCallback((id) => {
-    setToasts(prev => prev.filter(t => t.id !== id))
-  }, [])
-
-  return { toasts, addToast, removeToast }
-}
+// FIX BUG #2: ganti implementasi lokal dengan re-export dari ToastContext
+// File ini tetap ada agar semua import '@/hooks/useToast' tidak perlu diubah.
+export { useToast } from '@/context/ToastContext'

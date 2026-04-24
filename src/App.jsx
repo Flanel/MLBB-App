@@ -16,7 +16,7 @@ import AuditPage       from '@/pages/dashboard/super-admin/AuditPage'
 import SettingsPage    from '@/pages/dashboard/super-admin/SettingsPage'
 import SAInvitePage    from '@/pages/dashboard/super-admin/InvitePage'
 import SAApprovalsPage from '@/pages/dashboard/super-admin/ApprovalsPage'
-import TeamDataPage     from '@/pages/dashboard/super-admin/TeamDataPage'
+import TeamDataPage    from '@/pages/dashboard/super-admin/TeamDataPage'
 
 // Team Manager
 import TmDashboard     from '@/pages/dashboard/team-manager/DashboardPage'
@@ -41,11 +41,20 @@ const TMS = ['super_admin','team_manager','staff']
 const TM  = ['super_admin','team_manager']
 const ALL = ['super_admin','team_manager','staff','player']
 
+// FIX BUG #6: DashboardRedirect sebelumnya melakukan map[null] → '/login'
+// karena ada window singkat saat loading=false tapi role masih null.
+// Fix: tampilkan null (spinner sudah ada di ProtectedRoute) jika role belum ada.
 function DashboardRedirect() {
   const { role, loading } = useAuth()
-  if (loading) return null
-  const map = { super_admin:'/super-admin', team_manager:'/team-manager', staff:'/team-manager', player:'/player' }
-  return <Navigate to={map[role] || '/login'} replace />
+  // Jika masih loading ATAU role belum ter-set, tunggu — jangan redirect prematur.
+  if (loading || !role) return null
+  const map = {
+    super_admin:  '/super-admin',
+    team_manager: '/team-manager',
+    staff:        '/team-manager',
+    player:       '/player',
+  }
+  return <Navigate to={map[role] || '/super-admin'} replace />
 }
 
 export default function App() {
@@ -53,7 +62,7 @@ export default function App() {
     <BrowserRouter>
       <Routes>
         {/* Public routes */}
-        <Route path="/login" element={<LoginPage />} />
+        <Route path="/login"           element={<LoginPage />} />
         <Route path="/register/:token" element={<InviteRegisterPage />} />
 
         <Route path="/"          element={<Navigate to="/dashboard" replace />} />

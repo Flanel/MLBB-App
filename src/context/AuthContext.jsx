@@ -1,3 +1,14 @@
+// FIX BUG #1: Race condition login loop / stuck loading
+// FIX BUG #7: fetchingRef tidak di-reset saat cleanup (React.StrictMode issue)
+//
+// Bug sebelumnya:
+// - SIGNED_IN event membutuhkan setLoading(true→false) tapi jika LoginPage
+//   navigate() lebih dulu sebelum event ini diproses, ProtectedRoute melihat
+//   user=null → redirect /login → loop.
+// - fetchingRef.current tidak di-reset di cleanup, sehingga di React.StrictMode
+//   (double-invoke effects), ref bisa stuck = true → fetchProfile tidak pernah
+//   jalan → loading tidak pernah di-set false.
+
 import { createContext, useContext, useEffect, useState, useCallback, useRef } from 'react'
 import { supabase } from '@/lib/supabase'
 
@@ -51,8 +62,10 @@ export function AuthProvider({ children }) {
       const u = session?.user ?? null
       setUser(u)
       if (u) await fetchProfile(u.id)
-      setLoading(false)
-      initializedRef.current = true
+      if (mounted) {
+        setLoading(false)
+        initializedRef.current = true
+      }
     })
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
@@ -65,7 +78,9 @@ export function AuthProvider({ children }) {
       if (u) {
         if (event === 'SIGNED_IN') {
           // Pastikan loading=true saat fetch profile setelah login
-          // agar ProtectedRoute tidak redirect ke /login karena role masih null
+          // agar ProtectedRoute tidak redirect ke /login karena role masih null.
+          // LoginPage TIDAK boleh navigate() manual — biarkan perubahan user ini
+          // yang men-trigger re-render ProtectedRoute secara alami.
           setLoading(true)
           await fetchProfile(u.id)
           if (mounted) setLoading(false)
@@ -85,6 +100,9 @@ export function AuthProvider({ children }) {
 
     return () => {
       mounted = false
+      // FIX BUG #7: reset ref saat cleanup agar React.StrictMode double-invoke
+      // tidak membuat fetchingRef stuck = true selamanya.
+      fetchingRef.current = false
       subscription.unsubscribe()
     }
   }, [fetchProfile])
