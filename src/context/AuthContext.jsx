@@ -1,5 +1,16 @@
+// FIX BUG #1 (v2): Complete rewrite — single-path auth initialization.
+//
+// Root cause of "stuck loading on refresh":
+//   The old code had TWO parallel paths: init() + onAuthStateChange.
+//   They raced against each other, causing loading state to get stuck.
+//
+// Fix: Use onAuthStateChange as the ONLY source of truth.
+//   - INITIAL_SESSION handles page refresh (fires immediately with stored session)
+//   - SIGNED_IN handles explicit login
+//   - TOKEN_REFRESHED is skipped (no profile change)
+//   - No separate init() function → no race condition
 
-import { createContext, useContext, useEffect, useState, useCallback, useRef } from 'react'
+import { createContext, useContext, useEffect, useState, useCallback } from 'react'
 import { supabase } from '@/lib/supabase'
 
 const AuthContext = createContext(null)
@@ -10,32 +21,21 @@ export function AuthProvider({ children }) {
   const [teamActive, setTeamActive] = useState(true)
   const [loading, setLoading]       = useState(true)
 
-  // FIX BUG #1 (refresh stuck):
-  // - Removed fetchingRef guard — it was silently skipping legitimate profile
-  //   fetches, leaving role=null permanently which caused ProtectedRoute to
-  //   show the loading screen forever.
-  // - Added profileLoadedRef to track whether we already have a role, so
-  //   onAuthStateChange SIGNED_IN doesn't redundantly re-fetch.
-  const initializedRef   = useRef(false)
-  const profileLoadedRef = useRef(false)
-
   const fetchProfile = useCallback(async (userId) => {
     try {
-      const { data: profile } = await supabase
+      const { data: profile, error } = await supabase
         .from('users')
         .select('role, team_id, teams(is_active)')
         .eq('id', userId)
         .single()
 
-      if (!profile) {
+      if (error || !profile) {
         setRole(null)
         setTeamActive(true)
-        profileLoadedRef.current = false
         return
       }
 
       setRole(profile.role)
-      profileLoadedRef.current = true
 
       if (profile.role !== 'super_admin' && profile.team_id) {
         setTeamActive(profile.teams?.is_active ?? true)
@@ -45,75 +45,35 @@ export function AuthProvider({ children }) {
     } catch {
       setRole(null)
       setTeamActive(true)
-      profileLoadedRef.current = false
     }
   }, [])
 
   useEffect(() => {
     let mounted = true
 
-    const init = async () => {
-      try {
-        const { data: { session } } = await supabase.auth.getSession()
-        if (!mounted) return
-
-        const u = session?.user ?? null
-        setUser(u)
-        if (u) await fetchProfile(u.id)
-
-      } catch {
-
-        if (mounted) {
-          setUser(null)
-          setRole(null)
-          setTeamActive(true)
-        }
-      } finally {
-
-        if (mounted) {
-          setLoading(false)
-          initializedRef.current = true
-        }
-      }
-    }
-
+    // Single event handler — no separate init() needed
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
       if (!mounted) return
-      if (event === 'INITIAL_SESSION') return
+
+      // Token refresh doesn't change the user profile
+      if (event === 'TOKEN_REFRESHED') return
 
       const u = session?.user ?? null
       setUser(u)
 
       if (u) {
-        if (event === 'SIGNED_IN') {
-          // FIX BUG #1: Only set loading=true when user explicitly signs in
-          // (not on refresh). If init() already loaded the profile, skip.
-          if (!profileLoadedRef.current) {
-            setLoading(true)
-            await fetchProfile(u.id)
-            if (mounted) setLoading(false)
-          }
-        } else if (event !== 'TOKEN_REFRESHED') {
-          await fetchProfile(u.id)
-        }
+        await fetchProfile(u.id)
       } else {
         setRole(null)
         setTeamActive(true)
-        profileLoadedRef.current = false
       }
 
-      if (!initializedRef.current) {
-        if (mounted) setLoading(false)
-        initializedRef.current = true
-      }
+      // Always resolve loading after processing
+      if (mounted) setLoading(false)
     })
-
-    init()
 
     return () => {
       mounted = false
-      initializedRef.current   = false
-      profileLoadedRef.current = false
       subscription.unsubscribe()
     }
   }, [fetchProfile])
@@ -123,7 +83,6 @@ export function AuthProvider({ children }) {
     setUser(null)
     setRole(null)
     setTeamActive(true)
-    profileLoadedRef.current = false
   }
 
   return (
