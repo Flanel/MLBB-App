@@ -222,7 +222,7 @@ export default function PlayerSchedulePage() {
                                     padding:'5px 10px', borderRadius:7, fontSize:12, cursor:'pointer',
                                     fontFamily:'DM Sans,sans-serif', fontWeight: active ? 600 : 400,
                                     background: active ? opt.bg : 'var(--bg-elevated)',
-                                    border: `1px solid ${active ? opt.color.replace(')', ',0.4)').replace('var(', 'rgba(').replace('--', '') : 'var(--border-2)'}`,
+                                    border: `1px solid ${active ? 'currentColor' : 'var(--border-2)'}`,
                                     color: active ? opt.color : 'var(--text-muted)',
                                     transition:'all 0.12s',
                                     opacity: saving[s.id] ? 0.6 : 1,

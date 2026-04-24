@@ -1,3 +1,3 @@
-// FIX BUG #2: ganti implementasi lokal dengan re-export dari ToastContext
+// Re-export from ToastContext for consistent import paths.
 // File ini tetap ada agar semua import '@/hooks/useToast' tidak perlu diubah.
 export { useToast } from '@/context/ToastContext'

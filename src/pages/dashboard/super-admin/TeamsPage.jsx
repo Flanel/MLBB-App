@@ -39,7 +39,7 @@ export default function TeamsPage() {
       setTeams((data || []).map(t => ({ ...t, member_count: t.users?.[0]?.count ?? 0 })))
     }
     setLoading(false)
-  }, [])
+  }, [addToast])
 
   useEffect(() => { fetchTeams() }, [fetchTeams])
 

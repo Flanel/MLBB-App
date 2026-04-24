@@ -1,4 +1,5 @@
 import { Navigate, useLocation } from 'react-router-dom'
+import { useState, useEffect } from 'react'
 import { useAuth } from '@/hooks/useAuth'
 
 function LoadingScreen() {
@@ -23,6 +24,18 @@ export default function ProtectedRoute({ children, allowedRoles }) {
   const { user, role, teamActive, loading } = useAuth()
   const location = useLocation()
 
+  // FIX BUG #1: Safety timeout — if role stays null for > 8 seconds after
+  // loading finishes, the profile fetch likely failed (RLS issue, network error).
+  // Redirect to login instead of showing loading screen forever.
+  const [roleTimeout, setRoleTimeout] = useState(false)
+  useEffect(() => {
+    if (user && role === null && !loading) {
+      const timer = setTimeout(() => setRoleTimeout(true), 8000)
+      return () => clearTimeout(timer)
+    }
+    setRoleTimeout(false)
+  }, [user, role, loading])
+
   // Masih inisialisasi (getSession / fetchProfile belum selesai)
   if (loading) return <LoadingScreen />
 
@@ -31,7 +44,11 @@ export default function ProtectedRoute({ children, allowedRoles }) {
 
   // User ada tapi role belum di-load (fetchProfile masih jalan setelah SIGNED_IN)
   // Tampilkan loading, JANGAN redirect ke /login — ini yang menyebabkan login loop sebelumnya
-  if (role === null) return <LoadingScreen />
+  // KECUALI sudah timeout (profilefetch gagal silent)
+  if (role === null) {
+    if (roleTimeout) return <Navigate to="/login" replace />
+    return <LoadingScreen />
+  }
 
   if (!teamActive && role !== 'super_admin') {
     return <Navigate to="/login?reason=deactivated" state={{ from: location }} replace />

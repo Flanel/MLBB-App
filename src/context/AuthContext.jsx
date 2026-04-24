@@ -10,12 +10,16 @@ export function AuthProvider({ children }) {
   const [teamActive, setTeamActive] = useState(true)
   const [loading, setLoading]       = useState(true)
 
-  const fetchingRef    = useRef(false)
-  const initializedRef = useRef(false)
+  // FIX BUG #1 (refresh stuck):
+  // - Removed fetchingRef guard — it was silently skipping legitimate profile
+  //   fetches, leaving role=null permanently which caused ProtectedRoute to
+  //   show the loading screen forever.
+  // - Added profileLoadedRef to track whether we already have a role, so
+  //   onAuthStateChange SIGNED_IN doesn't redundantly re-fetch.
+  const initializedRef   = useRef(false)
+  const profileLoadedRef = useRef(false)
 
   const fetchProfile = useCallback(async (userId) => {
-    if (fetchingRef.current) return
-    fetchingRef.current = true
     try {
       const { data: profile } = await supabase
         .from('users')
@@ -26,10 +30,12 @@ export function AuthProvider({ children }) {
       if (!profile) {
         setRole(null)
         setTeamActive(true)
+        profileLoadedRef.current = false
         return
       }
 
       setRole(profile.role)
+      profileLoadedRef.current = true
 
       if (profile.role !== 'super_admin' && profile.team_id) {
         setTeamActive(profile.teams?.is_active ?? true)
@@ -39,8 +45,7 @@ export function AuthProvider({ children }) {
     } catch {
       setRole(null)
       setTeamActive(true)
-    } finally {
-      fetchingRef.current = false
+      profileLoadedRef.current = false
     }
   }, [])
 
@@ -57,14 +62,14 @@ export function AuthProvider({ children }) {
         if (u) await fetchProfile(u.id)
 
       } catch {
-      
+
         if (mounted) {
           setUser(null)
           setRole(null)
           setTeamActive(true)
         }
       } finally {
-        
+
         if (mounted) {
           setLoading(false)
           initializedRef.current = true
@@ -81,16 +86,20 @@ export function AuthProvider({ children }) {
 
       if (u) {
         if (event === 'SIGNED_IN') {
-          
-          setLoading(true)
-          await fetchProfile(u.id)
-          if (mounted) setLoading(false)
+          // FIX BUG #1: Only set loading=true when user explicitly signs in
+          // (not on refresh). If init() already loaded the profile, skip.
+          if (!profileLoadedRef.current) {
+            setLoading(true)
+            await fetchProfile(u.id)
+            if (mounted) setLoading(false)
+          }
         } else if (event !== 'TOKEN_REFRESHED') {
           await fetchProfile(u.id)
         }
       } else {
         setRole(null)
         setTeamActive(true)
+        profileLoadedRef.current = false
       }
 
       if (!initializedRef.current) {
@@ -103,8 +112,8 @@ export function AuthProvider({ children }) {
 
     return () => {
       mounted = false
-      fetchingRef.current    = false
-      initializedRef.current = false
+      initializedRef.current   = false
+      profileLoadedRef.current = false
       subscription.unsubscribe()
     }
   }, [fetchProfile])
@@ -114,6 +123,7 @@ export function AuthProvider({ children }) {
     setUser(null)
     setRole(null)
     setTeamActive(true)
+    profileLoadedRef.current = false
   }
 
   return (

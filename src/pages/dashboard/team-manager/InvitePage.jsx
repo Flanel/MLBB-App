@@ -33,12 +33,15 @@ export default function TmInvitePage() {
   const [creating, setCreating]   = useState(false)
   const [myTeamId, setMyTeamId]   = useState(null)
 
-  const fetchTokens = useCallback(async () => {
+  const fetchTokens = useCallback(async (teamId) => {
+    if (!teamId) return
     setLoading(true)
+    // FIX BUG #4: filter by team_id agar TM hanya lihat token tim sendiri
     const { data } = await supabase
       .from('invite_tokens')
       .select('*, teams(name), users!invite_tokens_used_by_fkey(name)')
       .eq('role', 'player')
+      .eq('team_id', teamId)
       .order('created_at', { ascending: false })
     setTokens(data || [])
     setLoading(false)
@@ -47,8 +50,9 @@ export default function TmInvitePage() {
   useEffect(() => {
     async function init() {
       const { data: me } = await supabase.from('users').select('team_id').eq('id', user.id).single()
-      setMyTeamId(me?.team_id)
-      fetchTokens()
+      const tid = me?.team_id
+      setMyTeamId(tid)
+      fetchTokens(tid)
     }
     if (user) init()
   }, [user, fetchTokens])
@@ -120,7 +124,7 @@ export default function TmInvitePage() {
             Semua Link ({tokens.length})
           </p>
           <div style={{ display: 'flex', gap: 8 }}>
-            <button className="btn" style={{ padding: '6px 10px' }} onClick={fetchTokens}>
+            <button className="btn" style={{ padding: '6px 10px' }} onClick={() => fetchTokens(myTeamId)}>
               <RefreshCw size={12} className={loading ? 'animate-spin' : ''} />
             </button>
             <button className="btn btn-primary" style={{ padding: '6px 12px', gap: 6 }} onClick={() => setShowModal(true)}>
