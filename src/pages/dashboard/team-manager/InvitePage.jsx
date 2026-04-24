@@ -4,10 +4,10 @@ import Modal from '@/components/ui/Modal'
 import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/hooks/useAuth'
 import { useToast } from '@/hooks/useToast'
-import { Link2, Plus, Copy, Trash2, RefreshCw, Clock, CheckCircle, XCircle, User } from 'lucide-react'
+import { Link2, Plus, Copy, Trash2, RefreshCw, Clock, CheckCircle, XCircle, Users, Infinity } from 'lucide-react'
 
 function formatExpiry(dateStr) {
-  const d = new Date(dateStr)
+  const d   = new Date(dateStr)
   const now = new Date()
   const diffH = Math.round((d - now) / 3600000)
   if (diffH < 0)   return 'Kedaluwarsa'
@@ -17,29 +17,52 @@ function formatExpiry(dateStr) {
 }
 
 function StatusBadge({ token }) {
-  if (token.used_at)                              return <span className="badge badge-green"><CheckCircle size={10}/> Digunakan</span>
-  if (new Date(token.expires_at) < new Date())   return <span className="badge badge-slate"><XCircle size={10}/> Kedaluwarsa</span>
-  return <span className="badge badge-ocean"><Clock size={10}/> Aktif</span>
+  const expired = new Date(token.expires_at) < new Date()
+  if (expired) return (
+    <span className="badge badge-slate"><XCircle size={10} /> Kedaluwarsa</span>
+  )
+  return (
+    <span className="badge badge-ocean"><Clock size={10} /> Aktif</span>
+  )
+}
+
+function UsageBadge({ token }) {
+  const count   = token.use_count ?? 0
+  const max     = token.max_uses
+  const expired = new Date(token.expires_at) < new Date()
+  if (expired && count === 0) return null
+  return (
+    <span style={{
+      display: 'inline-flex', alignItems: 'center', gap: 4,
+      fontSize: 10, color: 'var(--text-muted)',
+      background: 'var(--bg-surface)',
+      border: '1px solid var(--border-1)',
+      borderRadius: 6, padding: '2px 6px',
+    }}>
+      <Users size={9} />
+      {count} / {max == null ? <Infinity size={9} /> : max}
+    </span>
+  )
 }
 
 export default function TmInvitePage() {
-  const { user } = useAuth()
+  const { user }     = useAuth()
   const { addToast } = useToast()
 
   const [tokens, setTokens]       = useState([])
   const [loading, setLoading]     = useState(true)
   const [showModal, setShowModal] = useState(false)
   const [note, setNote]           = useState('')
+  const [maxUses, setMaxUses]     = useState('')   // '' = unlimited
   const [creating, setCreating]   = useState(false)
   const [myTeamId, setMyTeamId]   = useState(null)
 
   const fetchTokens = useCallback(async (teamId) => {
     if (!teamId) return
     setLoading(true)
-    // FIX BUG #4: filter by team_id agar TM hanya lihat token tim sendiri
     const { data } = await supabase
       .from('invite_tokens')
-      .select('*, teams(name), users!invite_tokens_used_by_fkey(name)')
+      .select('*, teams(name)')
       .eq('role', 'player')
       .eq('team_id', teamId)
       .order('created_at', { ascending: false })
@@ -65,13 +88,16 @@ export default function TmInvitePage() {
       team_id:    myTeamId,
       created_by: user.id,
       note:       note || null,
+      max_uses:   maxUses ? parseInt(maxUses) : null,  // null = unlimited dalam 24 jam
+      use_count:  0,
     })
     setCreating(false)
     if (error) { addToast({ message: 'Gagal membuat link: ' + error.message, type: 'danger' }); return }
     addToast({ message: 'Link undangan berhasil dibuat.', type: 'success' })
     setNote('')
+    setMaxUses('')
     setShowModal(false)
-    fetchTokens()
+    fetchTokens(myTeamId)
   }
 
   async function deleteToken(id) {
@@ -88,9 +114,16 @@ export default function TmInvitePage() {
     addToast({ message: 'Link disalin ke clipboard!', type: 'success' })
   }
 
-  const active   = tokens.filter(t => !t.used_at && new Date(t.expires_at) > new Date())
-  const used     = tokens.filter(t => t.used_at)
-  const expired  = tokens.filter(t => !t.used_at && new Date(t.expires_at) <= new Date())
+  // Sebuah token aktif jika: belum expire DAN (max_uses null ATAU use_count < max_uses)
+  function isActive(t) {
+    if (new Date(t.expires_at) < new Date()) return false
+    if (t.max_uses != null && (t.use_count ?? 0) >= t.max_uses) return false
+    return true
+  }
+
+  const active  = tokens.filter(t =>  isActive(t))
+  const full    = tokens.filter(t => !isActive(t) && new Date(t.expires_at) > new Date())
+  const expired = tokens.filter(t =>  new Date(t.expires_at) < new Date())
 
   return (
     <DashboardLayout title="Invite Players">
@@ -99,15 +132,15 @@ export default function TmInvitePage() {
           Link Undangan Player
         </h2>
         <p style={{ fontSize: 12, color: 'var(--text-muted)' }}>
-          Buat link personal untuk mengundang player bergabung ke tim. Setiap link berlaku 24 jam.
+          Buat link untuk mengundang player bergabung ke tim. Satu link bisa dipakai <strong style={{ color: 'var(--text-secondary)' }}>banyak orang</strong> selama <strong style={{ color: 'var(--text-secondary)' }}>24 jam</strong>.
         </p>
       </div>
 
       {/* Stats */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 12, marginBottom: 20 }}>
         {[
-          { label: 'Aktif', count: active.length,   color: '#38bdf8' },
-          { label: 'Digunakan', count: used.length,   color: '#22c55e' },
+          { label: 'Aktif',        count: active.length,  color: '#38bdf8' },
+          { label: 'Penuh / Full', count: full.length,    color: '#f59e0b' },
           { label: 'Kedaluwarsa', count: expired.length, color: 'var(--text-dim)' },
         ].map(s => (
           <div key={s.label} className="card" style={{ textAlign: 'center', padding: '14px 16px' }}>
@@ -143,46 +176,41 @@ export default function TmInvitePage() {
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
             {tokens.map(t => {
-              const isActive  = !t.used_at && new Date(t.expires_at) > new Date()
-              const link      = `${window.location.origin}/register/${t.token}`
+              const active_ = isActive(t)
+              const link    = `${window.location.origin}/register/${t.token}`
               return (
                 <div key={t.id} style={{
                   background: 'var(--bg-surface)',
-                  border: `1px solid ${isActive ? 'var(--border-2)' : 'var(--border-1)'}`,
+                  border: `1px solid ${active_ ? 'var(--border-2)' : 'var(--border-1)'}`,
                   borderRadius: 10, padding: '12px 14px',
-                  opacity: isActive ? 1 : 0.6,
+                  opacity: active_ ? 1 : 0.6,
                 }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: 8 }}>
                     <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 4, flexWrap: 'wrap' }}>
                         <StatusBadge token={t} />
+                        <UsageBadge token={t} />
                         {t.note && (
-                          <span style={{ fontSize: 11, color: 'var(--text-muted)', fontStyle: 'italic' }}>
-                            {t.note}
-                          </span>
+                          <span style={{ fontSize: 11, color: 'var(--text-muted)', fontStyle: 'italic' }}>{t.note}</span>
                         )}
                       </div>
                       <p style={{ fontSize: 11, fontFamily: 'IBM Plex Mono,monospace', color: 'var(--text-dim)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', marginBottom: 4 }}>
                         {link}
                       </p>
-                      <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap' }}>
-                        <span style={{ fontSize: 11, color: 'var(--text-dim)' }}>
-                          <Clock size={10} style={{ marginRight: 4 }} />
-                          {formatExpiry(t.expires_at)}
+                      <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', alignItems: 'center' }}>
+                        <span style={{ fontSize: 11, color: 'var(--text-dim)', display: 'flex', alignItems: 'center', gap: 4 }}>
+                          <Clock size={10} /> {formatExpiry(t.expires_at)}
                         </span>
-                        {t.used_at && t['users'] && (
-                          <span style={{ fontSize: 11, color: 'var(--text-dim)' }}>
-                            <User size={10} style={{ marginRight: 4 }} />
-                            {t['users'].name || 'Unknown'}
-                          </span>
-                        )}
+                        <span style={{ fontSize: 11, color: 'var(--text-dim)' }}>
+                          {(t.use_count ?? 0)} orang sudah daftar
+                        </span>
                         <span style={{ fontSize: 11, color: 'var(--text-dim)' }}>
                           {new Date(t.created_at).toLocaleDateString('id-ID')}
                         </span>
                       </div>
                     </div>
                     <div style={{ display: 'flex', gap: 6 }}>
-                      {isActive && (
+                      {active_ && (
                         <button className="btn" style={{ fontSize: 11, padding: '5px 10px', gap: 5 }} onClick={() => copyLink(t.token)}>
                           <Copy size={11} /> Salin
                         </button>
@@ -201,22 +229,32 @@ export default function TmInvitePage() {
 
       {/* Create Modal */}
       <Modal open={showModal} onClose={() => setShowModal(false)} title="Buat Link Undangan Player">
-        <p style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 16 }}>
-          Link akan berlaku selama 24 jam dan hanya bisa digunakan sekali. Player yang mendaftar via link ini perlu diapprove oleh management sebelum bisa login.
-        </p>
-        <div style={{ marginBottom: 16 }}>
-          <label className="form-label">Label / Catatan (Opsional)</label>
-          <input className="form-input" placeholder="Contoh: Untuk posisi Jungler"
-            value={note} onChange={e => setNote(e.target.value)} />
-          <p style={{ fontSize: 11, color: 'var(--text-dim)', marginTop: 6 }}>
-            Label membantu kamu mengidentifikasi untuk siapa link ini dibuat.
+        <div style={{ background: 'rgba(56,189,248,0.06)', border: '1px solid rgba(56,189,248,0.2)', borderRadius: 8, padding: '10px 14px', marginBottom: 16 }}>
+          <p style={{ fontSize: 12, color: '#7dd3fc', lineHeight: 1.6 }}>
+            🔗 Link berlaku <strong>24 jam</strong> dan bisa digunakan oleh <strong>banyak orang sekaligus</strong>. 
+            Batasi jumlah pengguna dengan mengisi field "Maks. Pengguna" di bawah.
           </p>
         </div>
-        <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
-          <button className="btn" onClick={() => setShowModal(false)}>Batal</button>
-          <button className="btn btn-primary" disabled={creating} onClick={createToken}>
-            {creating ? 'Membuat...' : 'Buat Link'}
-          </button>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+          <div>
+            <label className="form-label">Label / Catatan (Opsional)</label>
+            <input className="form-input" placeholder="Contoh: Rekrutmen Jungler batch April"
+              value={note} onChange={e => setNote(e.target.value)} />
+          </div>
+          <div>
+            <label className="form-label">Maks. Pengguna (Opsional)</label>
+            <input className="form-input" type="number" min="1" placeholder="Kosongkan = tidak terbatas"
+              value={maxUses} onChange={e => setMaxUses(e.target.value)} />
+            <p style={{ fontSize: 11, color: 'var(--text-dim)', marginTop: 5 }}>
+              Biarkan kosong jika ingin link bisa dipakai oleh siapapun selama 24 jam.
+            </p>
+          </div>
+          <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
+            <button className="btn" onClick={() => setShowModal(false)}>Batal</button>
+            <button className="btn btn-primary" disabled={creating} onClick={createToken}>
+              {creating ? 'Membuat...' : 'Buat Link'}
+            </button>
+          </div>
         </div>
       </Modal>
     </DashboardLayout>

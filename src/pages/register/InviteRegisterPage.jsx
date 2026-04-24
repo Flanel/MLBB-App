@@ -1,3 +1,14 @@
+// InviteRegisterPage.jsx — Updated untuk multi-use invite tokens
+//
+// PERUBAHAN dari versi sebelumnya:
+// ─────────────────────────────────────────────────────────────────
+// SEBELUM: Token ditolak jika used_at sudah terisi (single-use only)
+// SEKARANG:
+//   1. Token valid selama belum expire DAN (max_uses null OR use_count < max_uses)
+//   2. Setiap registrasi sukses: increment use_count (bukan set used_at)
+//   3. used_at hanya diisi untuk tracking kapan pertama kali dipakai
+// ─────────────────────────────────────────────────────────────────
+
 import { useState, useEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { supabase } from '@/lib/supabase'
@@ -49,9 +60,18 @@ export default function InviteRegisterPage() {
         .eq('token', token)
         .single()
 
-      if (error || !data)                        { setTokenStatus('invalid'); return }
-      if (data.used_at)                          { setTokenStatus('used');    return }
+      if (error || !data)                         { setTokenStatus('invalid'); return }
       if (new Date(data.expires_at) < new Date()) { setTokenStatus('expired'); return }
+
+      // PERUBAHAN: Cek max_uses jika ada
+      // Jika max_uses null → unlimited (hanya dibatasi expire)
+      // Jika max_uses terisi → cek use_count
+      const useCount = data.use_count ?? 0
+      const maxUses  = data.max_uses
+      if (maxUses != null && useCount >= maxUses) {
+        setTokenStatus('full')  // Link sudah penuh
+        return
+      }
 
       setTokenData(data)
       setTeamName(data.teams?.name || '')
@@ -71,277 +91,199 @@ export default function InviteRegisterPage() {
     try {
       const isPlayer = tokenData.role === 'player'
 
-      // ── Step 1: Create Supabase auth user ──────────────────
+      // Step 1: Create Supabase auth user
       const { data: authData, error: signupErr } = await supabase.auth.signUp({ email, password })
       if (signupErr) throw new Error(signupErr.message)
 
       const userId = authData.user?.id
       if (!userId) throw new Error('Gagal membuat akun. Coba lagi.')
 
-      // ── Step 2: Call SECURITY DEFINER RPC ─────────────────
-      // This bypasses RLS and handles: users upsert + player_application + token used
-      const { error: rpcErr } = await supabase.rpc('register_invite_user', {
-        p_user_id:         userId,
-        p_email:           email,
-        p_name:            isPlayer ? fullName : staffName,
-        p_role:            tokenData.role,
-        p_team_id:         tokenData.team_id,
-        p_is_active:       false,  // always false — needs approval/activation
-        p_ign:             isPlayer ? nickname : null,
-        p_invite_token_id: tokenData.id,
-        // player-only
-        p_nickname:        isPlayer ? nickname    : null,
-        p_full_name:       isPlayer ? fullName    : null,
-        p_birth_place:     isPlayer ? birthPlace  : null,
-        p_birth_date:      isPlayer ? birthDate   : null,
-        p_address:         isPlayer ? address     : null,
-        p_domicile:        isPlayer ? domicile    : null,
-        p_esport_type:     isPlayer ? esportType  : null,
-      })
+      // Step 2: Insert ke tabel users
+      const insertData = isPlayer ? {
+        id:          userId,
+        email,
+        name:        nickname,
+        full_name:   fullName,
+        birth_place: birthPlace || null,
+        birth_date:  birthDate  || null,
+        address:     address    || null,
+        domicile:    domicile   || null,
+        esport_type: esportType || null,
+        role:        'player',
+        team_id:     tokenData.team_id,
+        is_active:   false, // player perlu approval
+      } : {
+        id:        userId,
+        email,
+        name:      staffName,
+        role:      tokenData.role,
+        team_id:   tokenData.team_id,
+        is_active: true, // staff/manager langsung aktif
+      }
 
-      if (rpcErr) throw new Error(rpcErr.message)
+      const { error: insertErr } = await supabase.from('users').insert(insertData)
+      if (insertErr) throw new Error(insertErr.message)
 
-      // ── Step 3: Sign out — login only after approval ───────
-      await supabase.auth.signOut()
-      setStep(2)
+      // Step 3: PERUBAHAN — increment use_count, jangan set used_at untuk blokir
+      // used_at diisi hanya jika ini pertama kali dipakai (tracking saja)
+      const currentUseCount = tokenData.use_count ?? 0
+      const updateData = {
+        use_count: currentUseCount + 1,
+        // Set used_at hanya untuk first use tracking
+        ...(currentUseCount === 0 ? { used_at: new Date().toISOString() } : {}),
+      }
+      await supabase.from('invite_tokens').update(updateData).eq('id', tokenData.id)
 
+      navigate('/login', { state: { registered: true, role: tokenData.role } })
     } catch (err) {
-      setError(err.message)
+      setError(err.message || 'Terjadi kesalahan. Coba lagi.')
     } finally {
       setSubmitting(false)
     }
   }
 
-  const bg     = { minHeight:'100vh', display:'flex', alignItems:'center', justifyContent:'center', padding:'24px 16px', background:'var(--bg-base)', position:'relative', overflow:'hidden' }
-  const gridBg = { position:'fixed', inset:0, pointerEvents:'none', backgroundImage:'linear-gradient(rgba(255,255,255,0.015) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,0.015) 1px,transparent 1px)', backgroundSize:'48px 48px' }
-  const glow   = { position:'fixed', width:500, height:500, borderRadius:'50%', background:'radial-gradient(circle,rgba(225,29,72,0.06) 0%,transparent 70%)', top:'50%', left:'50%', transform:'translate(-50%,-50%)', pointerEvents:'none' }
-  const card   = { width:'100%', maxWidth:480, position:'relative', zIndex:10, background:'#0f1020', border:'1px solid var(--border-1)', borderRadius:16, padding:'28px', boxShadow:'0 32px 80px rgba(0,0,0,0.6)' }
+  // ── Loading state ──────────────────────────────────────────────────────────
+  if (tokenStatus === 'loading') return (
+    <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--bg-deep)' }}>
+      <Loader size={24} style={{ color: 'var(--text-dim)', animation: 'spin 1s linear infinite' }} />
+    </div>
+  )
 
-  // ── STATUS SCREENS ──────────────────────────────────────────
-  if (tokenStatus === 'loading') {
-    return (
-      <div style={bg}><div style={gridBg}/><div style={glow}/>
-        <div style={{ ...card, textAlign:'center', padding:48 }}>
-          <Loader size={32} style={{ color:'var(--red)', animation:'spin 1s linear infinite', margin:'0 auto 16px' }} />
-          <p style={{ color:'var(--text-muted)', fontSize:13 }}>Memvalidasi link undangan...</p>
-        </div>
-      </div>
-    )
-  }
-
-  if (tokenStatus !== 'valid' || !tokenData) {
-    const msgs = {
-      expired: { icon: AlertTriangle, title:'Link Kedaluwarsa',     sub:'Link undangan ini sudah tidak berlaku (>24 jam). Hubungi team manager untuk mendapatkan link baru.' },
-      used:    { icon: CheckCircle,   title:'Link Sudah Digunakan', sub:'Link undangan ini sudah dipakai. Jika ini bukan kamu, hubungi administrator.' },
-      invalid: { icon: XCircle,       title:'Link Tidak Valid',     sub:'Link undangan tidak ditemukan atau telah dihapus.' },
+  // ── Invalid / Expired / Full states ───────────────────────────────────────
+  if (['invalid', 'expired', 'full'].includes(tokenStatus)) {
+    const messages = {
+      invalid: { icon: XCircle,       color: 'var(--red)',   title: 'Link Tidak Valid',       body: 'Link undangan ini tidak ditemukan atau sudah tidak berlaku.' },
+      expired: { icon: AlertTriangle, color: '#f59e0b',      title: 'Link Kedaluwarsa',       body: 'Link undangan ini telah melewati batas waktu 24 jam. Minta link baru dari tim kamu.' },
+      full:    { icon: AlertTriangle, color: 'var(--brand)', title: 'Link Sudah Penuh',       body: 'Kuota link undangan ini sudah tercapai. Minta link baru dari tim kamu.' },
     }
-    const { icon: Icon, title, sub } = msgs[tokenStatus] || msgs.invalid
+    const { icon: Icon, color, title, body } = messages[tokenStatus]
     return (
-      <div style={bg}><div style={gridBg}/><div style={glow}/>
-        <div style={{ ...card, textAlign:'center' }}>
-          <div style={{ marginBottom:24 }}><NXKLogo size={56}/></div>
-          <Icon size={40} style={{ color: tokenStatus === 'used' ? '#22c55e' : 'var(--red)', margin:'0 auto 16px' }} />
-          <p style={{ fontFamily:'Syne,sans-serif', fontSize:15, fontWeight:700, color:'var(--text-primary)', marginBottom:8 }}>{title}</p>
-          <p style={{ fontSize:12, color:'var(--text-muted)', lineHeight:1.6 }}>{sub}</p>
+      <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--bg-deep)', padding: 20 }}>
+        <div style={{ textAlign: 'center', maxWidth: 360 }}>
+          <Icon size={40} style={{ color, margin: '0 auto 16px' }} />
+          <h2 style={{ fontFamily: 'Syne,sans-serif', fontSize: 18, fontWeight: 700, color: 'var(--text-primary)', marginBottom: 8 }}>{title}</h2>
+          <p style={{ fontSize: 13, color: 'var(--text-muted)', lineHeight: 1.6 }}>{body}</p>
         </div>
       </div>
     )
   }
 
-  // ── SUCCESS SCREEN ─────────────────────────────────────────
-  if (step === 2) {
-    const isPlayer = tokenData.role === 'player'
-    return (
-      <div style={bg}><div style={gridBg}/><div style={glow}/>
-        <div style={{ ...card, textAlign:'center' }}>
-          <div style={{ marginBottom:24 }}><NXKLogo size={64}/></div>
-          <div style={{ width:56, height:56, borderRadius:'50%', background:'rgba(34,197,94,0.1)', border:'1px solid rgba(34,197,94,0.3)', display:'flex', alignItems:'center', justifyContent:'center', margin:'0 auto 20px' }}>
-            <CheckCircle size={28} style={{ color:'#22c55e' }} />
-          </div>
-          <p style={{ fontFamily:'Syne,sans-serif', fontSize:16, fontWeight:700, color:'var(--text-primary)', marginBottom:8 }}>
-            Pendaftaran Berhasil!
-          </p>
-          {isPlayer ? (
-            <>
-              <p style={{ fontSize:13, color:'var(--text-muted)', lineHeight:1.7, marginBottom:16 }}>
-                Pendaftaranmu ke <strong style={{ color:'var(--text-primary)' }}>{teamName}</strong> sudah diterima.
-              </p>
-              <div style={{ background:'rgba(251,163,21,0.07)', border:'1px solid rgba(251,163,21,0.2)', borderRadius:8, padding:'10px 14px', marginBottom:20, textAlign:'left' }}>
-                <p style={{ fontSize:12, color:'#fbbf24', lineHeight:1.7 }}>
-                  <strong>Langkah selanjutnya:</strong><br/>
-                  1. Cek email &amp; klik link verifikasi dari Supabase (cek folder spam).<br/>
-                  2. Tunggu Team Manager mengapprove pendaftaranmu.<br/>
-                  3. Setelah diapprove, kamu bisa login.
-                </p>
-              </div>
-            </>
-          ) : (
-            <>
-              <p style={{ fontSize:13, color:'var(--text-muted)', lineHeight:1.7, marginBottom:16 }}>
-                Akunmu sebagai <strong style={{ color:'var(--text-primary)' }}>{ROLE_LABEL[tokenData.role]}</strong> di{' '}
-                <strong style={{ color:'var(--text-primary)' }}>{teamName}</strong> sudah terdaftar.
-              </p>
-              <div style={{ background:'rgba(59,130,246,0.07)', border:'1px solid rgba(59,130,246,0.2)', borderRadius:8, padding:'10px 14px', marginBottom:20, textAlign:'left' }}>
-                <div style={{ display:'flex', gap:8, alignItems:'flex-start' }}>
-                  <Mail size={14} style={{ color:'#60a5fa', flexShrink:0, marginTop:2 }}/>
-                  <p style={{ fontSize:12, color:'#60a5fa', lineHeight:1.7 }}>
-                    <strong>Langkah selanjutnya:</strong><br/>
-                    1. Cek email &amp; klik link verifikasi dari Supabase (cek spam).<br/>
-                    2. Super Admin akan mengaktivasi akunmu di halaman Approvals.<br/>
-                    3. Setelah diaktivasi, kamu bisa login ke dashboard.
-                  </p>
-                </div>
-              </div>
-            </>
-          )}
-          <button className="btn btn-primary" style={{ width:'100%', justifyContent:'center', padding:'10px' }}
-            onClick={() => navigate('/login')}>
-            Ke Halaman Login
-          </button>
-        </div>
-      </div>
-    )
-  }
+  const isPlayer = tokenData?.role === 'player'
 
-  const isPlayer = tokenData.role === 'player'
-
-  // ── REGISTRATION FORM ─────────────────────────────────────
+  // ── Registration Form ──────────────────────────────────────────────────────
   return (
-    <div style={bg}><div style={gridBg}/><div style={glow}/>
-      <div style={{ width:'100%', maxWidth:520, position:'relative', zIndex:10 }}>
-        <div style={{ display:'flex', flexDirection:'column', alignItems:'center', marginBottom:24 }}>
-          <NXKLogo size={56}/>
-          <div style={{ marginTop:16, textAlign:'center' }}>
-            <p style={{ fontFamily:'Syne,sans-serif', fontSize:12, fontWeight:600, letterSpacing:'0.1em', color:'var(--text-muted)', marginBottom:4 }}>UNDANGAN BERGABUNG</p>
-            <p style={{ fontSize:13, color:'var(--text-primary)' }}>
-              <span style={{ color:'var(--red)', fontWeight:600 }}>{teamName}</span>
-              {' · '}
-              <span className="badge badge-ocean" style={{ fontSize:11 }}>{ROLE_LABEL[tokenData.role]}</span>
-            </p>
-            <p style={{ fontSize:11, color:'var(--text-dim)', marginTop:6 }}>
-              Link berlaku hingga {new Date(tokenData.expires_at).toLocaleString('id-ID')}
-            </p>
-          </div>
+    <div style={{ minHeight: '100vh', background: 'var(--bg-deep)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}>
+      <div style={{ width: '100%', maxWidth: 440 }}>
+        <div style={{ textAlign: 'center', marginBottom: 28 }}>
+          <NXKLogo style={{ margin: '0 auto 16px' }} />
+          <h1 style={{ fontFamily: 'Syne,sans-serif', fontSize: 20, fontWeight: 800, color: 'var(--text-primary)', marginBottom: 6 }}>
+            Daftar sebagai {ROLE_LABEL[tokenData?.role] || 'Member'}
+          </h1>
+          <p style={{ fontSize: 13, color: 'var(--text-muted)' }}>
+            Bergabung ke tim <strong style={{ color: 'var(--text-secondary)' }}>{teamName}</strong>
+          </p>
         </div>
 
-        <div style={card}>
-          <p style={{ fontFamily:'Syne,sans-serif', fontSize:14, fontWeight:700, color:'var(--text-primary)', marginBottom:20 }}>
-            Buat Akun {ROLE_LABEL[tokenData.role]}
-          </p>
-
-          <form onSubmit={handleSubmit} style={{ display:'flex', flexDirection:'column', gap:14 }}>
-            <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:12 }}>
-              <div style={{ gridColumn:'1 / -1' }}>
-                <label className="form-label">Email</label>
-                <input type="email" required className="form-input" placeholder="email@kamu.com"
-                  value={email} onChange={e=>setEmail(e.target.value)} />
-              </div>
-              <div>
-                <label className="form-label">Password</label>
-                <div style={{ position:'relative' }}>
-                  <input type={showPw?'text':'password'} required className="form-input"
-                    placeholder="Min. 8 karakter" value={password} onChange={e=>setPassword(e.target.value)}
-                    style={{ paddingRight:38 }} />
-                  <button type="button" onClick={()=>setShowPw(v=>!v)}
-                    style={{ position:'absolute', right:10, top:'50%', transform:'translateY(-50%)', background:'none', border:'none', color:'var(--text-muted)', cursor:'pointer', padding:2 }}>
-                    {showPw ? <EyeOff size={13}/> : <Eye size={13}/>}
-                  </button>
-                </div>
-              </div>
-              <div>
-                <label className="form-label">Konfirmasi Password</label>
-                <input type={showPw?'text':'password'} required className="form-input"
-                  placeholder="Ulangi password" value={confirmPw} onChange={e=>setConfirmPw(e.target.value)} />
+        <form onSubmit={handleSubmit}>
+          <div className="card" style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+            {/* Account fields */}
+            <div>
+              <label className="form-label">Email *</label>
+              <div style={{ position: 'relative' }}>
+                <Mail size={13} style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', color: 'var(--text-dim)' }} />
+                <input className="form-input" style={{ paddingLeft: 30 }} type="email" placeholder="email@example.com"
+                  value={email} onChange={e => setEmail(e.target.value)} required />
               </div>
             </div>
-
-            <div style={{ borderTop:'1px solid var(--border-1)', paddingTop:14 }}>
-              <p style={{ fontSize:11, fontFamily:'Syne,sans-serif', fontWeight:600, letterSpacing:'0.1em', color:'var(--text-dim)', textTransform:'uppercase', marginBottom:14 }}>
-                {isPlayer ? 'Data Pendaftaran Player' : 'Informasi Pribadi'}
-              </p>
+            <div>
+              <label className="form-label">Password *</label>
+              <div style={{ position: 'relative' }}>
+                <input className="form-input" style={{ paddingRight: 36 }}
+                  type={showPw ? 'text' : 'password'} placeholder="Min. 8 karakter"
+                  value={password} onChange={e => setPassword(e.target.value)} required />
+                <button type="button" onClick={() => setShowPw(v => !v)}
+                  style={{ position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', color: 'var(--text-dim)', cursor: 'pointer' }}>
+                  {showPw ? <EyeOff size={14} /> : <Eye size={14} />}
+                </button>
+              </div>
+            </div>
+            <div>
+              <label className="form-label">Konfirmasi Password *</label>
+              <input className="form-input" type={showPw ? 'text' : 'password'} placeholder="Ulangi password"
+                value={confirmPw} onChange={e => setConfirmPw(e.target.value)} required />
             </div>
 
-            {isPlayer ? (
+            {/* Player-specific fields */}
+            {isPlayer && (
               <>
-                <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:12 }}>
-                  <div>
-                    <label className="form-label">Nickname / IGN <span style={{ color:'var(--red)' }}>*</span></label>
-                    <input required className="form-input" placeholder="Username in-game"
-                      value={nickname} onChange={e=>setNickname(e.target.value)} />
-                  </div>
-                  <div>
-                    <label className="form-label">Nama Asli <span style={{ color:'var(--red)' }}>*</span></label>
-                    <input required className="form-input" placeholder="Nama lengkap sesuai KTP"
-                      value={fullName} onChange={e=>setFullName(e.target.value)} />
-                  </div>
-                  <div>
-                    <label className="form-label">Tempat Lahir <span style={{ color:'var(--red)' }}>*</span></label>
-                    <input required className="form-input" placeholder="Kota tempat lahir"
-                      value={birthPlace} onChange={e=>setBirthPlace(e.target.value)} />
-                  </div>
-                  <div>
-                    <label className="form-label">Tanggal Lahir <span style={{ color:'var(--red)' }}>*</span></label>
-                    <input type="date" required className="form-input"
-                      value={birthDate} onChange={e=>setBirthDate(e.target.value)} />
-                  </div>
-                  <div style={{ gridColumn:'1 / -1' }}>
-                    <label className="form-label">Alamat <span style={{ color:'var(--red)' }}>*</span></label>
-                    <input required className="form-input" placeholder="Alamat lengkap sesuai KTP"
-                      value={address} onChange={e=>setAddress(e.target.value)} />
-                  </div>
-                  <div>
-                    <label className="form-label">Domisili <span style={{ color:'var(--red)' }}>*</span></label>
-                    <input required className="form-input" placeholder="Kota domisili saat ini"
-                      value={domicile} onChange={e=>setDomicile(e.target.value)} />
-                  </div>
-                  <div>
-                    <label className="form-label">Jenis Esport <span style={{ color:'var(--red)' }}>*</span></label>
-                    <select required className="form-input" value={esportType} onChange={e=>setEsportType(e.target.value)}>
-                      <option value="">Pilih game...</option>
-                      {ESPORT_OPTIONS.map(g => <option key={g} value={g}>{g}</option>)}
-                    </select>
-                  </div>
-                </div>
-                <div style={{ background:'rgba(251,163,21,0.07)', border:'1px solid rgba(251,163,21,0.2)', borderRadius:8, padding:'10px 12px' }}>
-                  <p style={{ fontSize:11, color:'#fbbf24', lineHeight:1.5 }}>
-                    ⏳ Setelah daftar, verifikasi email kamu lalu tunggu approval dari management tim.
+                <div style={{ borderTop: '1px solid var(--border-1)', paddingTop: 14 }}>
+                  <p style={{ fontSize: 10, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--text-dim)', marginBottom: 12, fontFamily: 'Syne,sans-serif' }}>
+                    Data Pemain
                   </p>
                 </div>
-              </>
-            ) : (
-              <>
                 <div>
-                  <label className="form-label">Nama Lengkap <span style={{ color:'var(--red)' }}>*</span></label>
-                  <input required className="form-input" placeholder="Nama kamu"
-                    value={staffName} onChange={e=>setStaffName(e.target.value)} />
+                  <label className="form-label">Nickname / IGN *</label>
+                  <input className="form-input" placeholder="In-game name" value={nickname}
+                    onChange={e => setNickname(e.target.value)} required />
                 </div>
-                <div style={{ background:'rgba(59,130,246,0.07)', border:'1px solid rgba(59,130,246,0.2)', borderRadius:8, padding:'10px 12px' }}>
-                  <div style={{ display:'flex', gap:8, alignItems:'flex-start' }}>
-                    <Mail size={13} style={{ color:'#60a5fa', flexShrink:0, marginTop:1 }}/>
-                    <p style={{ fontSize:11, color:'#60a5fa', lineHeight:1.5 }}>
-                      Setelah daftar, verifikasi email kamu lalu tunggu Super Admin mengaktivasi akunmu.
-                    </p>
+                <div>
+                  <label className="form-label">Nama Lengkap *</label>
+                  <input className="form-input" placeholder="Nama sesuai KTP" value={fullName}
+                    onChange={e => setFullName(e.target.value)} required />
+                </div>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                  <div>
+                    <label className="form-label">Kota Lahir</label>
+                    <input className="form-input" placeholder="Jakarta" value={birthPlace}
+                      onChange={e => setBirthPlace(e.target.value)} />
+                  </div>
+                  <div>
+                    <label className="form-label">Tanggal Lahir</label>
+                    <input className="form-input" type="date" value={birthDate}
+                      onChange={e => setBirthDate(e.target.value)} />
                   </div>
                 </div>
+                <div>
+                  <label className="form-label">Domisili</label>
+                  <input className="form-input" placeholder="Kota domisili saat ini" value={domicile}
+                    onChange={e => setDomicile(e.target.value)} />
+                </div>
+                <div>
+                  <label className="form-label">Game Utama</label>
+                  <select className="form-input" value={esportType} onChange={e => setEsportType(e.target.value)}>
+                    <option value="">Pilih game...</option>
+                    {ESPORT_OPTIONS.map(g => <option key={g}>{g}</option>)}
+                  </select>
+                </div>
               </>
+            )}
+
+            {/* Staff/Manager name */}
+            {!isPlayer && (
+              <div>
+                <label className="form-label">Nama *</label>
+                <input className="form-input" placeholder="Nama lengkap" value={staffName}
+                  onChange={e => setStaffName(e.target.value)} required />
+              </div>
             )}
 
             {error && (
-              <div style={{ background:'var(--red-bg)', border:'1px solid rgba(225,29,72,0.25)', borderRadius:8, padding:'10px 12px', fontSize:12, color:'var(--red)' }}>
+              <p style={{ fontSize: 12, color: 'var(--red)', background: 'rgba(225,29,72,0.1)', borderRadius: 7, padding: '8px 12px' }}>
                 {error}
-              </div>
+              </p>
             )}
 
-            <button type="submit" disabled={submitting} className="btn btn-primary"
-              style={{ width:'100%', justifyContent:'center', padding:'11px', marginTop:4, fontFamily:'Syne,sans-serif', letterSpacing:'0.04em' }}>
-              {submitting ? 'Mendaftar...' : `Daftar sebagai ${ROLE_LABEL[tokenData.role]}`}
+            <button type="submit" className="btn btn-primary" disabled={submitting} style={{ width: '100%', justifyContent: 'center', marginTop: 4 }}>
+              {submitting ? 'Mendaftarkan...' : `Daftar sebagai ${ROLE_LABEL[tokenData?.role] || 'Member'}`}
             </button>
-          </form>
-        </div>
 
-        <p style={{ fontSize:10, textAlign:'center', marginTop:14, color:'var(--text-dim)', letterSpacing:'0.05em' }}>
-          NXK ESPORTS · MANAGEMENT SYSTEM v2
-        </p>
+            {isPlayer && (
+              <p style={{ fontSize: 11, color: 'var(--text-dim)', textAlign: 'center', lineHeight: 1.5 }}>
+                Akun player perlu diapprove oleh management tim sebelum bisa login.
+              </p>
+            )}
+          </div>
+        </form>
       </div>
     </div>
   )

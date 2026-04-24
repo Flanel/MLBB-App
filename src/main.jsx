@@ -1,19 +1,19 @@
-import React from 'react'
-import ReactDOM from 'react-dom/client'
-import App from './App'
+import { StrictMode } from 'react'
+import { createRoot } from 'react-dom/client'
+import './index.css'
+import App from './App.jsx'
 import { AuthProvider } from '@/context/AuthContext'
 import { ToastProvider } from '@/context/ToastContext'
-import './index.css'
+import { NotificationProvider } from '@/context/NotificationContext'
 
-// FIX BUG #2: ToastProvider membungkus seluruh app agar useToast()
-// berbagi state yang sama antara DashboardLayout (renderer) dan
-// semua halaman (caller addToast).
-ReactDOM.createRoot(document.getElementById('root')).render(
-  <React.StrictMode>
+createRoot(document.getElementById('root')).render(
+  <StrictMode>
     <AuthProvider>
-      <ToastProvider>
-        <App />
-      </ToastProvider>
+      <NotificationProvider>
+        <ToastProvider>
+          <App />
+        </ToastProvider>
+      </NotificationProvider>
     </AuthProvider>
-  </React.StrictMode>,
+  </StrictMode>,
 )
