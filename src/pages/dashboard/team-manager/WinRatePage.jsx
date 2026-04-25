@@ -8,6 +8,10 @@
 // SEKARANG: query semua member aktif di team (tanpa filter role)
 //   → team_manager, staff, player SEMUA masuk ke daftar "Pemain"
 //   → Ini sesuai realitas: semua yang main MLBB adalah player juga
+//
+// FIX: teamId sekarang disimpan di state dan dipakai langsung di calcCombo
+//   → Sebelumnya calcCombo fetch ulang team_id dari DB setiap kali pemain dipilih
+//   → Redundant DB call, memperlambat response combo analysis
 // ─────────────────────────────────────────────────────────────────
 
 import { useState, useEffect } from 'react'
@@ -25,7 +29,6 @@ const PARTY_COLORS = {
   'Party (5)': '#2dd4bf',
 }
 
-// Role badge helper
 const ROLE_BADGE = {
   super_admin:  { label: 'SA',      color: '#f43f5e' },
   team_manager: { label: 'Manager', color: '#38bdf8' },
@@ -57,6 +60,8 @@ export default function WinRatePage() {
   const [selected, setSelected]     = useState([])
   const [hasData, setHasData]       = useState(false)
   const [comboPairData, setComboPairData] = useState(null)
+  // FIX: simpan teamId di state agar calcCombo tidak perlu fetch ulang dari DB
+  const [teamId, setTeamId]         = useState(null)
 
   useEffect(() => {
     async function load() {
@@ -65,13 +70,13 @@ export default function WinRatePage() {
         .from('users').select('team_id').eq('id', user.id).single()
       if (!profile?.team_id) { setLoading(false); return }
       const tid = profile.team_id
+      // FIX: simpan teamId ke state
+      setTeamId(tid)
 
       const [{ data: matchData }, { data: playerData }] = await Promise.all([
         supabase.from('matches')
           .select('id, result, match_player_stats(player_id)')
           .eq('team_id', tid),
-        // PERUBAHAN: hapus filter .eq('role','player')
-        // Semua member aktif di team bisa ikut main sebagai player
         supabase.from('users')
           .select('id, name, lane, role')
           .eq('team_id', tid)
@@ -98,7 +103,7 @@ export default function WinRatePage() {
         const chartData = [1, 2, 3, 4, 5]
           .filter(n => partyStats[n].total > 0)
           .map(n => ({
-            name: labels[n],
+            name:  labels[n],
             wr:    Math.round((partyStats[n].wins / partyStats[n].total) * 100),
             games: partyStats[n].total,
             wins:  partyStats[n].wins,
@@ -111,19 +116,16 @@ export default function WinRatePage() {
     load()
   }, [user])
 
-  // Hitung win rate untuk kombinasi pemain yang dipilih
+  // FIX: gunakan teamId dari state — tidak perlu fetch ulang ke DB setiap kali combo berubah
   useEffect(() => {
     if (selected.length < 2) { setComboPairData(null); return }
-    async function calcCombo() {
-      if (!user) return
-      const { data: profile } = await supabase
-        .from('users').select('team_id').eq('id', user.id).single()
-      if (!profile?.team_id) return
+    if (!teamId) return
 
+    async function calcCombo() {
       const { data: matchData } = await supabase
         .from('matches')
         .select('id, result, match_player_stats(player_id)')
-        .eq('team_id', profile.team_id)
+        .eq('team_id', teamId)
 
       let wins = 0, total = 0
       ;(matchData || []).forEach(m => {
@@ -137,7 +139,7 @@ export default function WinRatePage() {
       setComboPairData({ wins, total, wr: total ? Math.round((wins / total) * 100) : null })
     }
     calcCombo()
-  }, [selected, user])
+  }, [selected, teamId])
 
   function togglePlayer(id) {
     setSelected(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id].slice(0, 5))
@@ -212,7 +214,7 @@ export default function WinRatePage() {
         </>
       )}
 
-      {/* Player pair analysis — sekarang semua role bisa dipilih */}
+      {/* Player pair analysis */}
       <div className="card">
         <p style={{ fontSize: 10, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--text-dim)', marginBottom: 4, fontFamily: 'Syne,sans-serif' }}>
           Analisis Kombinasi Pemain
