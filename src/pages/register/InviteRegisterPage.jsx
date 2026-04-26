@@ -1,26 +1,20 @@
-// InviteRegisterPage.jsx — Fixed version
+// InviteRegisterPage.jsx — Fixed v2
 //
-// BUGS YANG DIPERBAIKI:
+// BUGS YANG DIPERBAIKI (di atas versi sebelumnya):
 // ─────────────────────────────────────────────────────────────────
-// BUG #1 (CRITICAL): insertData untuk player menyertakan kolom yang
-//   TIDAK ADA di tabel public.users (full_name, birth_place, birth_date,
-//   address, domicile, esport_type) → PostgreSQL error, registrasi selalu
-//   gagal diam-diam. Fix: pisahkan insert ke users (hanya kolom valid)
-//   dan insert terpisah ke player_applications.
+// BUG #5 (CRITICAL): Kolom `address` ada di state tapi TIDAK ADA
+//   form input-nya → selalu dikirim sebagai null/empty string.
+//   player_applications.address adalah NOT NULL → insert selalu gagal.
+//   Fix: tambah input "Alamat" di form player.
 //
-// BUG #2: Insert ke player_applications TIDAK ADA sama sekali.
-//   Akibatnya data detail player hilang dan manager tidak punya approval
-//   request apapun untuk di-review. Fix: tambah insert ke player_applications.
+// BUG #6: Semua kolom player_applications yang NOT NULL (birth_place,
+//   birth_date, address, domicile, esport_type) tidak di-require di form
+//   dan tidak divalidasi client-side → bisa submit dengan nilai kosong
+//   → DB constraint violation. Fix: tambah required + validasi sebelum submit.
 //
-// BUG #3: Rate limit Supabase 60 detik tidak di-handle dengan baik.
-//   Error ditampilkan mentah dalam Bahasa Inggris. Fix: parse detik dari
-//   pesan error → tampilkan countdown timer interaktif dalam B.Indonesia.
-//
-// BUG #4: Jika users insert gagal setelah signUp() sukses, auth user
-//   tersisa di auth.users (zombie) dan email tidak bisa daftar ulang.
-//   Fix: tambah pesan error yang lebih informatif untuk kasus ini.
-//
-// MINOR: kolom ign tidak di-set untuk player. Fix: set ign = nickname.
+// BUG #7: Error dari player_applications insert dianggap "tidak fatal"
+//   padahal manajer tidak akan bisa approve tanpa data ini.
+//   Fix: jadikan fatal dengan rollback-style error message yang jelas.
 // ─────────────────────────────────────────────────────────────────
 
 import { useState, useEffect, useRef } from 'react'
@@ -98,7 +92,7 @@ export default function InviteRegisterPage() {
   const [fullName,   setFullName]   = useState('')
   const [birthPlace, setBirthPlace] = useState('')
   const [birthDate,  setBirthDate]  = useState('')
-  const [address,    setAddress]    = useState('')
+  const [address,    setAddress]    = useState('')   // FIX BUG #5: state sudah ada, tinggal disambung ke form
   const [domicile,   setDomicile]   = useState('')
   const [esportType, setEsportType] = useState('')
 
@@ -139,7 +133,6 @@ export default function InviteRegisterPage() {
   }, [token])
 
   // ── Parse detik dari pesan rate limit Supabase ──────────────────────────
-  // Format: "For security purposes, you can only request this after X seconds."
   function parseRateLimitSeconds(msg) {
     const match = msg.match(/after (\d+) second/i)
     return match ? parseInt(match[1], 10) : 60
@@ -150,19 +143,26 @@ export default function InviteRegisterPage() {
     setError('')
     setRateLimitSecs(0)
 
+    const isPlayer = tokenData?.role === 'player'
+
     if (password !== confirmPw) { setError('Password tidak cocok.');        return }
     if (password.length < 8)    { setError('Password minimal 8 karakter.'); return }
+
+    // FIX BUG #6: Validasi client-side semua field NOT NULL di player_applications
+    if (isPlayer) {
+      if (!nickname.trim())   { setError('Nickname / IGN wajib diisi.');  return }
+      if (!fullName.trim())   { setError('Nama Lengkap wajib diisi.');    return }
+      if (!birthPlace.trim()) { setError('Kota Lahir wajib diisi.');      return }
+      if (!birthDate)         { setError('Tanggal Lahir wajib diisi.');   return }
+      if (!address.trim())    { setError('Alamat wajib diisi.');          return }
+      if (!domicile.trim())   { setError('Domisili wajib diisi.');        return }
+      if (!esportType)        { setError('Game Utama wajib dipilih.');    return }
+    }
 
     setSubmitting(true)
 
     try {
-      const isPlayer = tokenData.role === 'player'
-
       // ── Step 1: Buat auth user di Supabase ──────────────────────────────
-      // emailRedirectTo: undefined → mencegah Supabase kirim email konfirmasi
-      // (sistem ini invite-only, email konfirmasi tidak diperlukan).
-      // Fix permanen: nonaktifkan "Enable email confirmations" di Supabase
-      // Dashboard → Authentication → Configuration → Email.
       const { data: authData, error: signupErr } = await supabase.auth.signUp({
         email,
         password,
@@ -173,17 +173,15 @@ export default function InviteRegisterPage() {
       })
 
       if (signupErr) {
-        const msg = signupErr.message || ''
+        const msg    = signupErr.message || ''
         const msgLow = msg.toLowerCase()
 
-        // Rate limit per-user (60 detik cooldown)
         if (msgLow.includes('security purposes') || msgLow.includes('only request this after')) {
           const secs = parseRateLimitSeconds(msg)
           setRateLimitSecs(secs)
           return
         }
 
-        // Rate limit email Supabase free tier ("email rate limit exceeded")
         if (msgLow.includes('email rate limit') || msgLow.includes('rate limit exceeded')) {
           setError(
             'Server email sedang overload (batas pengiriman email tercapai). ' +
@@ -192,7 +190,6 @@ export default function InviteRegisterPage() {
           return
         }
 
-        // Email sudah terdaftar
         if (msgLow.includes('already registered') || msgLow.includes('user already registered')) {
           setError('Email ini sudah terdaftar. Coba login atau gunakan email lain.')
           return
@@ -204,11 +201,6 @@ export default function InviteRegisterPage() {
       const userId = authData.user?.id
       if (!userId) throw new Error('Gagal membuat akun. Coba lagi.')
 
-      // ── Deteksi: email confirmation masih ON di Supabase ────────────────
-      // Jika session null setelah signUp → user belum terautentikasi →
-      // insert ke users table akan ditolak RLS policy (auth.uid() = null).
-      // SOLUSI: Supabase Dashboard → Authentication → Configuration →
-      // Email → matikan "Enable email confirmations" → Save.
       if (!authData.session) {
         throw new Error(
           'Konfigurasi server belum selesai. ' +
@@ -218,6 +210,8 @@ export default function InviteRegisterPage() {
       }
 
       // ── Step 2: Insert ke tabel users ──────────────────────────────────
+      // HANYA kolom yang ada di public.users: id, email, name, ign, role, team_id, is_active
+      // Jangan tambah kolom apapun yang tidak ada di schema users!
       const userInsertData = isPlayer
         ? {
             id:        userId,
@@ -243,7 +237,6 @@ export default function InviteRegisterPage() {
         console.error('[Register] users insert failed:', insertErr)
         const msg = insertErr.message || ''
 
-        // Duplicate key → user ini sudah pernah daftar sebelumnya (zombie auth user)
         if (msg.includes('duplicate key') || msg.includes('unique constraint')) {
           throw new Error(
             'Email ini sudah terdaftar di sistem (mungkin dari percobaan sebelumnya). ' +
@@ -255,27 +248,31 @@ export default function InviteRegisterPage() {
       }
 
       // ── Step 3 (PLAYER ONLY): Insert ke player_applications ─────────────
-      // FIX BUG #2: Data detail player harus masuk ke player_applications,
-      // bukan ke users. Ini yang dipakai manager untuk approval.
+      // Semua kolom NOT NULL di schema sudah tervalidasi di atas (BUG #6 fix),
+      // jadi tidak ada null yang lolos sampai sini untuk field wajib.
       if (isPlayer) {
         const { error: appErr } = await supabase.from('player_applications').insert({
           invite_token_id: tokenData.id,
           user_id:         userId,
           team_id:         tokenData.team_id,
-          nickname,
-          full_name:       fullName,
-          birth_place:     birthPlace  || null,
-          birth_date:      birthDate   || null,
-          address:         address     || null,
-          domicile:        domicile    || null,
-          esport_type:     esportType  || null,
+          nickname:        nickname.trim(),
+          full_name:       fullName.trim(),
+          birth_place:     birthPlace.trim(),
+          birth_date:      birthDate,
+          address:         address.trim(),   // FIX BUG #5: sekarang selalu terisi karena ada form input
+          domicile:        domicile.trim(),
+          esport_type:     esportType,
           status:          'pending',
         })
 
+        // FIX BUG #7: player_applications WAJIB berhasil; tanpa ini manajer
+        // tidak punya data apapun untuk di-review/approve.
         if (appErr) {
-          // Tidak fatal — user sudah terbuat, tapi log error ini
           console.error('[Register] player_applications insert failed:', appErr)
-          // Lanjutkan saja; manager masih bisa ditemukan lewat users table
+          throw new Error(
+            `Data player gagal disimpan (${appErr.message || appErr.code || 'unknown'}). ` +
+            'Hubungi administrator tim.'
+          )
         }
       }
 
@@ -305,9 +302,9 @@ export default function InviteRegisterPage() {
   // ── Invalid / Expired / Full states ───────────────────────────────────────
   if (['invalid', 'expired', 'full'].includes(tokenStatus)) {
     const messages = {
-      invalid: { icon: XCircle,       color: 'var(--red)',   title: 'Link Tidak Valid',   body: 'Link undangan ini tidak ditemukan atau sudah tidak berlaku.' },
-      expired: { icon: AlertTriangle, color: '#f59e0b',      title: 'Link Kedaluwarsa',   body: 'Link undangan ini telah melewati batas waktu 24 jam. Minta link baru dari tim kamu.' },
-      full:    { icon: AlertTriangle, color: 'var(--brand)', title: 'Link Sudah Penuh',   body: 'Kuota link undangan ini sudah tercapai. Minta link baru dari tim kamu.' },
+      invalid: { icon: XCircle,       color: 'var(--red)',   title: 'Link Tidak Valid',  body: 'Link undangan ini tidak ditemukan atau sudah tidak berlaku.' },
+      expired: { icon: AlertTriangle, color: '#f59e0b',      title: 'Link Kedaluwarsa',  body: 'Link undangan ini telah melewati batas waktu 24 jam. Minta link baru dari tim kamu.' },
+      full:    { icon: AlertTriangle, color: 'var(--brand)', title: 'Link Sudah Penuh',  body: 'Kuota link undangan ini sudah tercapai. Minta link baru dari tim kamu.' },
     }
     const { icon: Icon, color, title, body } = messages[tokenStatus]
     return (
@@ -375,36 +372,48 @@ export default function InviteRegisterPage() {
                     Data Pemain
                   </p>
                 </div>
+
                 <div>
                   <label className="form-label">Nickname / IGN *</label>
                   <input className="form-input" placeholder="In-game name" value={nickname}
                     onChange={e => setNickname(e.target.value)} required />
                 </div>
+
                 <div>
                   <label className="form-label">Nama Lengkap *</label>
                   <input className="form-input" placeholder="Nama sesuai KTP" value={fullName}
                     onChange={e => setFullName(e.target.value)} required />
                 </div>
+
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
                   <div>
-                    <label className="form-label">Kota Lahir</label>
+                    <label className="form-label">Kota Lahir *</label>
                     <input className="form-input" placeholder="Jakarta" value={birthPlace}
-                      onChange={e => setBirthPlace(e.target.value)} />
+                      onChange={e => setBirthPlace(e.target.value)} required />
                   </div>
                   <div>
-                    <label className="form-label">Tanggal Lahir</label>
+                    <label className="form-label">Tanggal Lahir *</label>
                     <input className="form-input" type="date" value={birthDate}
-                      onChange={e => setBirthDate(e.target.value)} />
+                      onChange={e => setBirthDate(e.target.value)} required />
                   </div>
                 </div>
+
+                {/* FIX BUG #5: Tambah field Alamat yang sebelumnya HILANG dari form */}
                 <div>
-                  <label className="form-label">Domisili</label>
-                  <input className="form-input" placeholder="Kota domisili saat ini" value={domicile}
-                    onChange={e => setDomicile(e.target.value)} />
+                  <label className="form-label">Alamat *</label>
+                  <input className="form-input" placeholder="Alamat lengkap sesuai KTP" value={address}
+                    onChange={e => setAddress(e.target.value)} required />
                 </div>
+
                 <div>
-                  <label className="form-label">Game Utama</label>
-                  <select className="form-input" value={esportType} onChange={e => setEsportType(e.target.value)}>
+                  <label className="form-label">Domisili *</label>
+                  <input className="form-input" placeholder="Kota domisili saat ini" value={domicile}
+                    onChange={e => setDomicile(e.target.value)} required />
+                </div>
+
+                <div>
+                  <label className="form-label">Game Utama *</label>
+                  <select className="form-input" value={esportType} onChange={e => setEsportType(e.target.value)} required>
                     <option value="">Pilih game...</option>
                     {ESPORT_OPTIONS.map(g => <option key={g}>{g}</option>)}
                   </select>
@@ -421,7 +430,7 @@ export default function InviteRegisterPage() {
               </div>
             )}
 
-            {/* FIX BUG #3: Rate limit countdown (menggantikan teks error mentah Supabase) */}
+            {/* Rate limit countdown */}
             {rateLimitSecs > 0 && (
               <RateLimitCountdown
                 seconds={rateLimitSecs}
