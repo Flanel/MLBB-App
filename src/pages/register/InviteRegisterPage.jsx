@@ -201,6 +201,15 @@ export default function InviteRegisterPage() {
       const userId = authData.user?.id
       if (!userId) throw new Error('Gagal membuat akun. Coba lagi.')
 
+      // ── Deteksi email duplikat via Supabase identities trick ────────────
+      // Ketika email confirmation OFF dan email sudah ada di auth,
+      // Supabase mengembalikan user yang sama tapi identities = [].
+      // Ini cara resmi mendeteksinya tanpa error eksplisit dari signUp.
+      if (authData.user?.identities?.length === 0) {
+        setError('Email ini sudah terdaftar. Coba login atau gunakan email lain.')
+        return
+      }
+
       if (!authData.session) {
         throw new Error(
           'Konfigurasi server belum selesai. ' +
@@ -209,9 +218,11 @@ export default function InviteRegisterPage() {
         )
       }
 
-      // ── Step 2: Insert ke tabel users ──────────────────────────────────
-      // HANYA kolom yang ada di public.users: id, email, name, ign, role, team_id, is_active
-      // Jangan tambah kolom apapun yang tidak ada di schema users!
+      // ── Step 2: Upsert ke tabel users ──────────────────────────────────
+      // Pakai UPSERT (bukan insert) agar retry aman: jika user sudah ada
+      // di public.users dari percobaan sebelumnya yang gagal di step 3,
+      // upsert akan update data tanpa error duplicate key.
+      // HANYA kolom yang ada di public.users schema!
       const userInsertData = isPlayer
         ? {
             id:        userId,
@@ -231,49 +242,51 @@ export default function InviteRegisterPage() {
             is_active: true,
           }
 
-      const { error: insertErr } = await supabase.from('users').insert(userInsertData)
+      const { error: insertErr } = await supabase
+        .from('users')
+        .upsert(userInsertData, { onConflict: 'id' })
 
       if (insertErr) {
-        console.error('[Register] users insert failed:', insertErr)
+        console.error('[Register] users upsert failed:', insertErr)
         const msg = insertErr.message || ''
-
-        if (msg.includes('duplicate key') || msg.includes('unique constraint')) {
-          throw new Error(
-            'Email ini sudah terdaftar di sistem (mungkin dari percobaan sebelumnya). ' +
-            'Coba login langsung, atau gunakan email berbeda.'
-          )
-        }
-
         throw new Error(`Gagal menyimpan profil (${msg || insertErr.code || 'unknown'}). Hubungi administrator.`)
       }
 
       // ── Step 3 (PLAYER ONLY): Insert ke player_applications ─────────────
-      // Semua kolom NOT NULL di schema sudah tervalidasi di atas (BUG #6 fix),
-      // jadi tidak ada null yang lolos sampai sini untuk field wajib.
+      // Cek dulu apakah sudah ada player_application untuk user ini
+      // (kasus retry setelah step 2 berhasil tapi step 3 gagal).
       if (isPlayer) {
-        const { error: appErr } = await supabase.from('player_applications').insert({
-          invite_token_id: tokenData.id,
-          user_id:         userId,
-          team_id:         tokenData.team_id,
-          nickname:        nickname.trim(),
-          full_name:       fullName.trim(),
-          birth_place:     birthPlace.trim(),
-          birth_date:      birthDate,
-          address:         address.trim(),   // FIX BUG #5: sekarang selalu terisi karena ada form input
-          domicile:        domicile.trim(),
-          esport_type:     esportType,
-          status:          'pending',
-        })
+        const { data: existingApp } = await supabase
+          .from('player_applications')
+          .select('id')
+          .eq('user_id', userId)
+          .single()
 
-        // FIX BUG #7: player_applications WAJIB berhasil; tanpa ini manajer
-        // tidak punya data apapun untuk di-review/approve.
-        if (appErr) {
-          console.error('[Register] player_applications insert failed:', appErr)
-          throw new Error(
-            `Data player gagal disimpan (${appErr.message || appErr.code || 'unknown'}). ` +
-            'Hubungi administrator tim.'
-          )
+        if (!existingApp) {
+          // Belum ada → insert baru
+          const { error: appErr } = await supabase.from('player_applications').insert({
+            invite_token_id: tokenData.id,
+            user_id:         userId,
+            team_id:         tokenData.team_id,
+            nickname:        nickname.trim(),
+            full_name:       fullName.trim(),
+            birth_place:     birthPlace.trim(),
+            birth_date:      birthDate,
+            address:         address.trim(),
+            domicile:        domicile.trim(),
+            esport_type:     esportType,
+            status:          'pending',
+          })
+
+          if (appErr) {
+            console.error('[Register] player_applications insert failed:', appErr)
+            throw new Error(
+              `Data player gagal disimpan (${appErr.message || appErr.code || 'unknown'}). ` +
+              'Hubungi administrator tim.'
+            )
+          }
         }
+        // Jika sudah ada (retry), lanjut saja tanpa re-insert
       }
 
       // ── Step 4: Update use_count di invite token ─────────────────────────
