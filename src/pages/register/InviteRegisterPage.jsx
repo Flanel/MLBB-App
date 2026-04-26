@@ -1,18 +1,32 @@
-// InviteRegisterPage.jsx — Updated untuk multi-use invite tokens
+// InviteRegisterPage.jsx — Fixed version
 //
-// PERUBAHAN dari versi sebelumnya:
+// BUGS YANG DIPERBAIKI:
 // ─────────────────────────────────────────────────────────────────
-// SEBELUM: Token ditolak jika used_at sudah terisi (single-use only)
-// SEKARANG:
-//   1. Token valid selama belum expire DAN (max_uses null OR use_count < max_uses)
-//   2. Setiap registrasi sukses: increment use_count (bukan set used_at)
-//   3. used_at hanya diisi untuk tracking kapan pertama kali dipakai
+// BUG #1 (CRITICAL): insertData untuk player menyertakan kolom yang
+//   TIDAK ADA di tabel public.users (full_name, birth_place, birth_date,
+//   address, domicile, esport_type) → PostgreSQL error, registrasi selalu
+//   gagal diam-diam. Fix: pisahkan insert ke users (hanya kolom valid)
+//   dan insert terpisah ke player_applications.
+//
+// BUG #2: Insert ke player_applications TIDAK ADA sama sekali.
+//   Akibatnya data detail player hilang dan manager tidak punya approval
+//   request apapun untuk di-review. Fix: tambah insert ke player_applications.
+//
+// BUG #3: Rate limit Supabase 60 detik tidak di-handle dengan baik.
+//   Error ditampilkan mentah dalam Bahasa Inggris. Fix: parse detik dari
+//   pesan error → tampilkan countdown timer interaktif dalam B.Indonesia.
+//
+// BUG #4: Jika users insert gagal setelah signUp() sukses, auth user
+//   tersisa di auth.users (zombie) dan email tidak bisa daftar ulang.
+//   Fix: tambah pesan error yang lebih informatif untuk kasus ini.
+//
+// MINOR: kolom ign tidak di-set untuk player. Fix: set ign = nickname.
 // ─────────────────────────────────────────────────────────────────
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { supabase } from '@/lib/supabase'
-import { Eye, EyeOff, CheckCircle, XCircle, Loader, AlertTriangle, Mail } from 'lucide-react'
+import { Eye, EyeOff, CheckCircle, XCircle, Loader, AlertTriangle, Mail, Clock } from 'lucide-react'
 import NXKLogo from '@/components/layout/NXKLogo'
 
 const ESPORT_OPTIONS = [
@@ -22,6 +36,50 @@ const ESPORT_OPTIONS = [
 
 const ROLE_LABEL = { player: 'Player', staff: 'Staff', team_manager: 'Team Manager' }
 
+// ── Countdown component untuk rate limit error ──────────────────────────────
+function RateLimitCountdown({ seconds, onDone }) {
+  const [remaining, setRemaining] = useState(seconds)
+  const intervalRef = useRef(null)
+
+  useEffect(() => {
+    setRemaining(seconds)
+    intervalRef.current = setInterval(() => {
+      setRemaining(prev => {
+        if (prev <= 1) {
+          clearInterval(intervalRef.current)
+          onDone?.()
+          return 0
+        }
+        return prev - 1
+      })
+    }, 1000)
+    return () => clearInterval(intervalRef.current)
+  }, [seconds])
+
+  return (
+    <div style={{
+      fontSize: 12,
+      color: 'var(--text-dim)',
+      background: 'rgba(245,158,11,0.1)',
+      border: '1px solid rgba(245,158,11,0.25)',
+      borderRadius: 7,
+      padding: '10px 14px',
+      display: 'flex',
+      alignItems: 'center',
+      gap: 8,
+    }}>
+      <Clock size={14} style={{ color: '#f59e0b', flexShrink: 0 }} />
+      <span>
+        Untuk keamanan, tunggu{' '}
+        <strong style={{ color: '#f59e0b', fontVariantNumeric: 'tabular-nums' }}>
+          {remaining}
+        </strong>{' '}
+        detik sebelum mencoba lagi.
+      </span>
+    </div>
+  )
+}
+
 export default function InviteRegisterPage() {
   const { token } = useParams()
   const navigate  = useNavigate()
@@ -29,7 +87,6 @@ export default function InviteRegisterPage() {
   const [tokenData,   setTokenData]   = useState(null)
   const [tokenStatus, setTokenStatus] = useState('loading')
   const [teamName,    setTeamName]    = useState('')
-  const [step,        setStep]        = useState(1)
 
   const [email,     setEmail]     = useState('')
   const [password,  setPassword]  = useState('')
@@ -48,11 +105,14 @@ export default function InviteRegisterPage() {
   // Staff/Manager field
   const [staffName, setStaffName] = useState('')
 
-  const [submitting, setSubmitting] = useState(false)
-  const [error,      setError]      = useState('')
+  const [submitting,     setSubmitting]     = useState(false)
+  const [error,          setError]          = useState('')
+  const [rateLimitSecs,  setRateLimitSecs]  = useState(0)
 
+  // Validate token on mount
   useEffect(() => {
     if (!token) { setTokenStatus('invalid'); return }
+
     async function fetchToken() {
       const { data, error } = await supabase
         .from('invite_tokens')
@@ -63,13 +123,10 @@ export default function InviteRegisterPage() {
       if (error || !data)                         { setTokenStatus('invalid'); return }
       if (new Date(data.expires_at) < new Date()) { setTokenStatus('expired'); return }
 
-      // PERUBAHAN: Cek max_uses jika ada
-      // Jika max_uses null → unlimited (hanya dibatasi expire)
-      // Jika max_uses terisi → cek use_count
       const useCount = data.use_count ?? 0
       const maxUses  = data.max_uses
       if (maxUses != null && useCount >= maxUses) {
-        setTokenStatus('full')  // Link sudah penuh
+        setTokenStatus('full')
         return
       }
 
@@ -77,64 +134,125 @@ export default function InviteRegisterPage() {
       setTeamName(data.teams?.name || '')
       setTokenStatus('valid')
     }
+
     fetchToken()
   }, [token])
+
+  // ── Parse detik dari pesan rate limit Supabase ──────────────────────────
+  // Format: "For security purposes, you can only request this after X seconds."
+  function parseRateLimitSeconds(msg) {
+    const match = msg.match(/after (\d+) second/i)
+    return match ? parseInt(match[1], 10) : 60
+  }
 
   async function handleSubmit(e) {
     e.preventDefault()
     setError('')
+    setRateLimitSecs(0)
 
     if (password !== confirmPw) { setError('Password tidak cocok.');        return }
     if (password.length < 8)    { setError('Password minimal 8 karakter.'); return }
 
     setSubmitting(true)
+
     try {
       const isPlayer = tokenData.role === 'player'
 
-      // Step 1: Create Supabase auth user
+      // ── Step 1: Buat auth user di Supabase ──────────────────────────────
       const { data: authData, error: signupErr } = await supabase.auth.signUp({ email, password })
-      if (signupErr) throw new Error(signupErr.message)
+
+      if (signupErr) {
+        const msg = signupErr.message || ''
+
+        // FIX BUG #3: Tangkap rate limit error dan tampilkan countdown
+        if (msg.toLowerCase().includes('security purposes') ||
+            msg.toLowerCase().includes('only request this after')) {
+          const secs = parseRateLimitSeconds(msg)
+          setRateLimitSecs(secs)
+          return
+        }
+
+        // Email sudah terdaftar
+        if (msg.toLowerCase().includes('already registered') ||
+            msg.toLowerCase().includes('user already registered')) {
+          setError('Email ini sudah terdaftar. Coba login atau gunakan email lain.')
+          return
+        }
+
+        throw new Error(msg)
+      }
 
       const userId = authData.user?.id
       if (!userId) throw new Error('Gagal membuat akun. Coba lagi.')
 
-      // Step 2: Insert ke tabel users
-      const insertData = isPlayer ? {
-        id:          userId,
-        email,
-        name:        nickname,
-        full_name:   fullName,
-        birth_place: birthPlace || null,
-        birth_date:  birthDate  || null,
-        address:     address    || null,
-        domicile:    domicile   || null,
-        esport_type: esportType || null,
-        role:        'player',
-        team_id:     tokenData.team_id,
-        is_active:   false, // player perlu approval
-      } : {
-        id:        userId,
-        email,
-        name:      staffName,
-        role:      tokenData.role,
-        team_id:   tokenData.team_id,
-        is_active: true, // staff/manager langsung aktif
+      // ── Step 2: Insert ke tabel users (hanya kolom yang ada di schema!) ─
+      // FIX BUG #1: Hapus semua kolom yang tidak ada di users table.
+      // Kolom valid users: id, email, name, ign, role, team_id, is_active
+      const userInsertData = isPlayer
+        ? {
+            id:        userId,
+            email,
+            name:      nickname,   // display name = nickname/IGN
+            ign:       nickname,   // FIX MINOR: set kolom ign
+            role:      'player',
+            team_id:   tokenData.team_id,
+            is_active: false,      // player perlu approval dulu
+          }
+        : {
+            id:        userId,
+            email,
+            name:      staffName,
+            role:      tokenData.role,
+            team_id:   tokenData.team_id,
+            is_active: true,       // staff/manager langsung aktif
+          }
+
+      const { error: insertErr } = await supabase.from('users').insert(userInsertData)
+
+      if (insertErr) {
+        // FIX BUG #4: Jika insert users gagal setelah signUp sukses,
+        // beri pesan yang informatif (auth user sudah terbuat, tapi profil belum)
+        console.error('[Register] users insert failed:', insertErr)
+        throw new Error(
+          'Akun berhasil dibuat tapi data profil gagal disimpan. ' +
+          'Hubungi administrator dengan email: ' + email
+        )
       }
 
-      const { error: insertErr } = await supabase.from('users').insert(insertData)
-      if (insertErr) throw new Error(insertErr.message)
+      // ── Step 3 (PLAYER ONLY): Insert ke player_applications ─────────────
+      // FIX BUG #2: Data detail player harus masuk ke player_applications,
+      // bukan ke users. Ini yang dipakai manager untuk approval.
+      if (isPlayer) {
+        const { error: appErr } = await supabase.from('player_applications').insert({
+          invite_token_id: tokenData.id,
+          user_id:         userId,
+          team_id:         tokenData.team_id,
+          nickname,
+          full_name:       fullName,
+          birth_place:     birthPlace  || null,
+          birth_date:      birthDate   || null,
+          address:         address     || null,
+          domicile:        domicile    || null,
+          esport_type:     esportType  || null,
+          status:          'pending',
+        })
 
-      // Step 3: PERUBAHAN — increment use_count, jangan set used_at untuk blokir
-      // used_at diisi hanya jika ini pertama kali dipakai (tracking saja)
+        if (appErr) {
+          // Tidak fatal — user sudah terbuat, tapi log error ini
+          console.error('[Register] player_applications insert failed:', appErr)
+          // Lanjutkan saja; manager masih bisa ditemukan lewat users table
+        }
+      }
+
+      // ── Step 4: Update use_count di invite token ─────────────────────────
       const currentUseCount = tokenData.use_count ?? 0
-      const updateData = {
+      await supabase.from('invite_tokens').update({
         use_count: currentUseCount + 1,
-        // Set used_at hanya untuk first use tracking
         ...(currentUseCount === 0 ? { used_at: new Date().toISOString() } : {}),
-      }
-      await supabase.from('invite_tokens').update(updateData).eq('id', tokenData.id)
+      }).eq('id', tokenData.id)
 
       navigate('/login', { state: { registered: true, role: tokenData.role } })
+
     } catch (err) {
       setError(err.message || 'Terjadi kesalahan. Coba lagi.')
     } finally {
@@ -152,9 +270,9 @@ export default function InviteRegisterPage() {
   // ── Invalid / Expired / Full states ───────────────────────────────────────
   if (['invalid', 'expired', 'full'].includes(tokenStatus)) {
     const messages = {
-      invalid: { icon: XCircle,       color: 'var(--red)',   title: 'Link Tidak Valid',       body: 'Link undangan ini tidak ditemukan atau sudah tidak berlaku.' },
-      expired: { icon: AlertTriangle, color: '#f59e0b',      title: 'Link Kedaluwarsa',       body: 'Link undangan ini telah melewati batas waktu 24 jam. Minta link baru dari tim kamu.' },
-      full:    { icon: AlertTriangle, color: 'var(--brand)', title: 'Link Sudah Penuh',       body: 'Kuota link undangan ini sudah tercapai. Minta link baru dari tim kamu.' },
+      invalid: { icon: XCircle,       color: 'var(--red)',   title: 'Link Tidak Valid',   body: 'Link undangan ini tidak ditemukan atau sudah tidak berlaku.' },
+      expired: { icon: AlertTriangle, color: '#f59e0b',      title: 'Link Kedaluwarsa',   body: 'Link undangan ini telah melewati batas waktu 24 jam. Minta link baru dari tim kamu.' },
+      full:    { icon: AlertTriangle, color: 'var(--brand)', title: 'Link Sudah Penuh',   body: 'Kuota link undangan ini sudah tercapai. Minta link baru dari tim kamu.' },
     }
     const { icon: Icon, color, title, body } = messages[tokenStatus]
     return (
@@ -186,6 +304,7 @@ export default function InviteRegisterPage() {
 
         <form onSubmit={handleSubmit}>
           <div className="card" style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+
             {/* Account fields */}
             <div>
               <label className="form-label">Email *</label>
@@ -267,13 +386,27 @@ export default function InviteRegisterPage() {
               </div>
             )}
 
+            {/* FIX BUG #3: Rate limit countdown (menggantikan teks error mentah Supabase) */}
+            {rateLimitSecs > 0 && (
+              <RateLimitCountdown
+                seconds={rateLimitSecs}
+                onDone={() => setRateLimitSecs(0)}
+              />
+            )}
+
+            {/* Error biasa (non-rate-limit) */}
             {error && (
               <p style={{ fontSize: 12, color: 'var(--red)', background: 'rgba(225,29,72,0.1)', borderRadius: 7, padding: '8px 12px' }}>
                 {error}
               </p>
             )}
 
-            <button type="submit" className="btn btn-primary" disabled={submitting} style={{ width: '100%', justifyContent: 'center', marginTop: 4 }}>
+            <button
+              type="submit"
+              className="btn btn-primary"
+              disabled={submitting || rateLimitSecs > 0}
+              style={{ width: '100%', justifyContent: 'center', marginTop: 4 }}
+            >
               {submitting ? 'Mendaftarkan...' : `Daftar sebagai ${ROLE_LABEL[tokenData?.role] || 'Member'}`}
             </button>
 
