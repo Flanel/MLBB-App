@@ -159,22 +159,41 @@ export default function InviteRegisterPage() {
       const isPlayer = tokenData.role === 'player'
 
       // ── Step 1: Buat auth user di Supabase ──────────────────────────────
-      const { data: authData, error: signupErr } = await supabase.auth.signUp({ email, password })
+      // emailRedirectTo: undefined → mencegah Supabase kirim email konfirmasi
+      // (sistem ini invite-only, email konfirmasi tidak diperlukan).
+      // Fix permanen: nonaktifkan "Enable email confirmations" di Supabase
+      // Dashboard → Authentication → Configuration → Email.
+      const { data: authData, error: signupErr } = await supabase.auth.signUp({
+        email,
+        password,
+        options: {
+          emailRedirectTo: undefined,
+          data: { invited: true },
+        },
+      })
 
       if (signupErr) {
         const msg = signupErr.message || ''
+        const msgLow = msg.toLowerCase()
 
-        // FIX BUG #3: Tangkap rate limit error dan tampilkan countdown
-        if (msg.toLowerCase().includes('security purposes') ||
-            msg.toLowerCase().includes('only request this after')) {
+        // Rate limit per-user (60 detik cooldown)
+        if (msgLow.includes('security purposes') || msgLow.includes('only request this after')) {
           const secs = parseRateLimitSeconds(msg)
           setRateLimitSecs(secs)
           return
         }
 
+        // Rate limit email Supabase free tier ("email rate limit exceeded")
+        if (msgLow.includes('email rate limit') || msgLow.includes('rate limit exceeded')) {
+          setError(
+            'Server email sedang overload (batas pengiriman email tercapai). ' +
+            'Coba lagi dalam beberapa menit, atau hubungi administrator tim.'
+          )
+          return
+        }
+
         // Email sudah terdaftar
-        if (msg.toLowerCase().includes('already registered') ||
-            msg.toLowerCase().includes('user already registered')) {
+        if (msgLow.includes('already registered') || msgLow.includes('user already registered')) {
           setError('Email ini sudah terdaftar. Coba login atau gunakan email lain.')
           return
         }
@@ -185,18 +204,29 @@ export default function InviteRegisterPage() {
       const userId = authData.user?.id
       if (!userId) throw new Error('Gagal membuat akun. Coba lagi.')
 
-      // ── Step 2: Insert ke tabel users (hanya kolom yang ada di schema!) ─
-      // FIX BUG #1: Hapus semua kolom yang tidak ada di users table.
-      // Kolom valid users: id, email, name, ign, role, team_id, is_active
+      // ── Deteksi: email confirmation masih ON di Supabase ────────────────
+      // Jika session null setelah signUp → user belum terautentikasi →
+      // insert ke users table akan ditolak RLS policy (auth.uid() = null).
+      // SOLUSI: Supabase Dashboard → Authentication → Configuration →
+      // Email → matikan "Enable email confirmations" → Save.
+      if (!authData.session) {
+        throw new Error(
+          'Konfigurasi server belum selesai. ' +
+          'Administrator harus menonaktifkan "Enable email confirmations" ' +
+          'di Supabase Dashboard → Authentication → Configuration → Email.'
+        )
+      }
+
+      // ── Step 2: Insert ke tabel users ──────────────────────────────────
       const userInsertData = isPlayer
         ? {
             id:        userId,
             email,
-            name:      nickname,   // display name = nickname/IGN
-            ign:       nickname,   // FIX MINOR: set kolom ign
+            name:      nickname,
+            ign:       nickname,
             role:      'player',
             team_id:   tokenData.team_id,
-            is_active: false,      // player perlu approval dulu
+            is_active: false,
           }
         : {
             id:        userId,
@@ -204,19 +234,15 @@ export default function InviteRegisterPage() {
             name:      staffName,
             role:      tokenData.role,
             team_id:   tokenData.team_id,
-            is_active: true,       // staff/manager langsung aktif
+            is_active: true,
           }
 
       const { error: insertErr } = await supabase.from('users').insert(userInsertData)
 
       if (insertErr) {
-        // FIX BUG #4: Jika insert users gagal setelah signUp sukses,
-        // beri pesan yang informatif (auth user sudah terbuat, tapi profil belum)
         console.error('[Register] users insert failed:', insertErr)
-        throw new Error(
-          'Akun berhasil dibuat tapi data profil gagal disimpan. ' +
-          'Hubungi administrator dengan email: ' + email
-        )
+        const detail = insertErr.message || insertErr.code || 'unknown'
+        throw new Error(`Gagal menyimpan profil (${detail}). Hubungi administrator.`)
       }
 
       // ── Step 3 (PLAYER ONLY): Insert ke player_applications ─────────────
