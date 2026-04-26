@@ -241,8 +241,17 @@ export default function InviteRegisterPage() {
 
       if (insertErr) {
         console.error('[Register] users insert failed:', insertErr)
-        const detail = insertErr.message || insertErr.code || 'unknown'
-        throw new Error(`Gagal menyimpan profil (${detail}). Hubungi administrator.`)
+        const msg = insertErr.message || ''
+
+        // Duplicate key → user ini sudah pernah daftar sebelumnya (zombie auth user)
+        if (msg.includes('duplicate key') || msg.includes('unique constraint')) {
+          throw new Error(
+            'Email ini sudah terdaftar di sistem (mungkin dari percobaan sebelumnya). ' +
+            'Coba login langsung, atau gunakan email berbeda.'
+          )
+        }
+
+        throw new Error(`Gagal menyimpan profil (${msg || insertErr.code || 'unknown'}). Hubungi administrator.`)
       }
 
       // ── Step 3 (PLAYER ONLY): Insert ke player_applications ─────────────
