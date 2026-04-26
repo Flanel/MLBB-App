@@ -78,11 +78,24 @@ export default function SAInvitePage() {
   }
 
   async function deleteToken(id) {
-    const { error } = await supabase.from('invite_tokens').delete().eq('id', id)
-    if (!error) {
-      setTokens(prev => prev.filter(t => t.id !== id))
-      addToast({ message: 'Link dihapus.', type: 'success' })
+    const { data, error } = await supabase
+      .from('invite_tokens')
+      .delete()
+      .eq('id', id)
+      .select('id')
+
+    if (error) {
+      addToast({ message: 'Gagal menghapus link: ' + error.message, type: 'danger' })
+      return
     }
+
+    if (!data || data.length === 0) {
+      addToast({ message: 'Link tidak bisa dihapus. Hubungi administrator.', type: 'danger' })
+      return
+    }
+
+    setTokens(prev => prev.filter(t => t.id !== id))
+    addToast({ message: 'Link dihapus.', type: 'success' })
   }
 
   function copyLink(token) {

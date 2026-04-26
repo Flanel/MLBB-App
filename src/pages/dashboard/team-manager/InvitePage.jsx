@@ -101,11 +101,32 @@ export default function TmInvitePage() {
   }
 
   async function deleteToken(id) {
-    const { error } = await supabase.from('invite_tokens').delete().eq('id', id)
-    if (!error) {
-      setTokens(prev => prev.filter(t => t.id !== id))
-      addToast({ message: 'Link dihapus.', type: 'success' })
+    // Gunakan .select() agar Supabase return baris yang terhapus.
+    // Tanpa .select(), RLS silent block return { data: null, error: null }
+    // sehingga kode salah anggap sukses -> UI update tapi DB tidak berubah
+    // -> item muncul lagi saat refresh.
+    const { data, error } = await supabase
+      .from('invite_tokens')
+      .delete()
+      .eq('id', id)
+      .select('id')
+
+    if (error) {
+      console.error('[deleteToken] error:', error)
+      addToast({ message: 'Gagal menghapus link: ' + error.message, type: 'danger' })
+      return
     }
+
+    // data kosong = RLS diam-diam blokir, tidak ada baris yang terhapus
+    if (!data || data.length === 0) {
+      console.warn('[deleteToken] 0 rows deleted — kemungkinan RLS block')
+      addToast({ message: 'Link tidak bisa dihapus. Hubungi administrator.', type: 'danger' })
+      return
+    }
+
+    // Baru update state kalau DB benar-benar berhasil hapus
+    setTokens(prev => prev.filter(t => t.id !== id))
+    addToast({ message: 'Link dihapus.', type: 'success' })
   }
 
   function copyLink(token) {
