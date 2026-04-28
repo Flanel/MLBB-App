@@ -15,11 +15,11 @@ export default function Modal({ open, onClose, title, children, footer, size = '
   if (!open) return null
 
   return (
-    <div className="modal-overlay" style={{ position:'fixed', inset:0, zIndex:50, display:'flex', alignItems:'center', justifyContent:'center', padding:'0 16px', background:'rgba(0,0,0,0.75)' }}
+    <div className="modal-overlay" style={{ position:'fixed', inset:0, zIndex:50, display:'flex', alignItems:'center', justifyContent:'center', padding:'0 16px', background:'rgba(0,0,0,0.8)', backdropFilter:'blur(4px)' }}
       onClick={e => { if (e.target === e.currentTarget) onClose() }}
     >
       <div role="dialog" aria-modal="true" className="modal-panel"
-        style={{ width:'100%', maxWidth: SIZES[size] || SIZES.md, background:'var(--bg-surface)', border:'1px solid var(--border-2)', borderRadius:14, padding:'20px', boxShadow:'0 32px 80px rgba(0,0,0,0.7)' }}
+        style={{ width:'100%', maxWidth: SIZES[size] || SIZES.md, background:'var(--bg-surface)', border:'1px solid var(--border-2)', borderRadius:14, padding:'20px', boxShadow:'var(--shadow-deep)' }}
       >
         {/* Header */}
         <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', marginBottom:16 }}>
