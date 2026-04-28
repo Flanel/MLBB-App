@@ -5,7 +5,7 @@ import {
   LayoutDashboard, Users, Shield, ClipboardList, Settings,
   Swords, Trophy, BarChart2, UserCircle, History,
   LogOut, Calendar, TrendingUp, X, Link2, CheckSquare,
-  UserCog, Zap, Users2
+  UserCog, Zap, Users2, Flag
 } from 'lucide-react'
 
 const navConfig = {
@@ -24,65 +24,67 @@ const navConfig = {
       { to:'/super-admin/settings',  label:'Settings',     icon:Settings },
     ]},
     { group:'Account', items:[
-      { to:'/topup',                 label:'Top Up',       icon:Zap },
-      { to:'/profile',               label:'Profil Saya',  icon:UserCog },
+      { to:'/topup',   label:'Top Up',      icon:Zap },
+      { to:'/profile', label:'Profil Saya', icon:UserCog },
     ]},
   ],
   team_manager: [
     { group:'Main', items:[
-      { to:'/team-manager',              label:'Dashboard',     icon:LayoutDashboard },
+      { to:'/team-manager', label:'Dashboard', icon:LayoutDashboard },
     ]},
     { group:'Team', items:[
-      { to:'/team-manager/roster',       label:'Roster',        icon:Users },
-      { to:'/team-manager/squad',        label:'Squad',         icon:Users2 },
-      { to:'/team-manager/matches',      label:'Match Input',   icon:Swords },
-      { to:'/team-manager/tournaments',  label:'Tournaments',   icon:Trophy },
-      { to:'/team-manager/schedule',     label:'Schedule',      icon:Calendar },
+      { to:'/team-manager/roster',      label:'Roster',        icon:Users },
+      { to:'/team-manager/team-lineup', label:'Tim',           icon:Flag },
+      { to:'/team-manager/squad',       label:'Squad',         icon:Users2 },
+      { to:'/team-manager/matches',     label:'Match Input',   icon:Swords },
+      { to:'/team-manager/tournaments', label:'Tournaments',   icon:Trophy },
+      { to:'/team-manager/schedule',    label:'Schedule',      icon:Calendar },
     ]},
     { group:'Reports', items:[
-      { to:'/team-manager/analytics',    label:'Analytics',     icon:BarChart2 },
-      { to:'/team-manager/winrate',      label:'Party Win Rate',icon:TrendingUp },
+      { to:'/team-manager/analytics',   label:'Analytics',     icon:BarChart2 },
+      { to:'/team-manager/winrate',     label:'Party Win Rate',icon:TrendingUp },
     ]},
     { group:'Player Management', items:[
-      { to:'/team-manager/invite',       label:'Invite Players',icon:Link2 },
-      { to:'/team-manager/approvals',    label:'Approvals',     icon:CheckSquare },
+      { to:'/team-manager/invite',      label:'Invite Players',icon:Link2 },
+      { to:'/team-manager/approvals',   label:'Approvals',     icon:CheckSquare },
     ]},
     { group:'Account', items:[
-      { to:'/topup',                     label:'Top Up',        icon:Zap },
-      { to:'/profile',                   label:'Profil Saya',   icon:UserCog },
+      { to:'/topup',   label:'Top Up',      icon:Zap },
+      { to:'/profile', label:'Profil Saya', icon:UserCog },
     ]},
   ],
   staff: [
     { group:'Main', items:[
-      { to:'/team-manager',              label:'Dashboard',     icon:LayoutDashboard },
-      { to:'/team-manager/roster',       label:'Roster',        icon:Users },
-      { to:'/team-manager/squad',        label:'Squad',         icon:Users2 },
-      { to:'/team-manager/matches',      label:'Match Input',   icon:Swords },
-      { to:'/team-manager/tournaments',  label:'Tournaments',   icon:Trophy },
-      { to:'/team-manager/schedule',     label:'Schedule',      icon:Calendar },
+      { to:'/team-manager',             label:'Dashboard',     icon:LayoutDashboard },
+      { to:'/team-manager/roster',      label:'Roster',        icon:Users },
+      { to:'/team-manager/team-lineup', label:'Tim',           icon:Flag },
+      { to:'/team-manager/squad',       label:'Squad',         icon:Users2 },
+      { to:'/team-manager/matches',     label:'Match Input',   icon:Swords },
+      { to:'/team-manager/tournaments', label:'Tournaments',   icon:Trophy },
+      { to:'/team-manager/schedule',    label:'Schedule',      icon:Calendar },
     ]},
     { group:'Player Management', items:[
-      { to:'/team-manager/invite',       label:'Invite Players',icon:Link2 },
+      { to:'/team-manager/invite', label:'Invite Players', icon:Link2 },
     ]},
     { group:'Account', items:[
-      { to:'/topup',                     label:'Top Up',        icon:Zap },
-      { to:'/profile',                   label:'Profil Saya',   icon:UserCog },
+      { to:'/topup',   label:'Top Up',      icon:Zap },
+      { to:'/profile', label:'Profil Saya', icon:UserCog },
     ]},
   ],
   player: [
     { group:'Main', items:[
-      { to:'/player',              label:'Dashboard',    icon:UserCircle },
+      { to:'/player', label:'Dashboard', icon:UserCircle },
     ]},
     { group:'Stats', items:[
-      { to:'/player/history',      label:'Match History',icon:History },
-      { to:'/player/tournaments',  label:'Tournaments',  icon:Trophy },
+      { to:'/player/history',      label:'Match History', icon:History },
+      { to:'/player/tournaments',  label:'Tournaments',   icon:Trophy },
     ]},
     { group:'Team', items:[
-      { to:'/player/schedule',     label:'Schedule',     icon:Calendar },
+      { to:'/player/schedule', label:'Schedule', icon:Calendar },
     ]},
     { group:'Account', items:[
-      { to:'/topup',               label:'Top Up',       icon:Zap },
-      { to:'/profile',             label:'Profil Saya',  icon:UserCog },
+      { to:'/topup',   label:'Top Up',      icon:Zap },
+      { to:'/profile', label:'Profil Saya', icon:UserCog },
     ]},
   ],
 }
@@ -95,23 +97,22 @@ const roleLabels = {
 export default function Sidebar({ mobileOpen, onMobileClose }) {
   const { user, role, signOut } = useAuth()
   const groups   = navConfig[role] || []
-  const initials = (user?.email || 'NK').slice(0,2).toUpperCase()
+  const initials = (user?.email||'NK').slice(0,2).toUpperCase()
 
   return (
     <>
       {mobileOpen && (
         <div onClick={onMobileClose}
           style={{ position:'fixed', inset:0, background:'rgba(0,0,0,0.7)', zIndex:30 }}
-          className="mobile-backdrop" />
+          className="mobile-backdrop"/>
       )}
       <aside className={`app-sidebar${mobileOpen?' open':''}`}
         style={{ width:'var(--sidebar-width)', background:'#060810', borderRight:'1px solid var(--border-1)', display:'flex', flexDirection:'column', height:'100%', flexShrink:0 }}>
 
-        {/* Logo */}
         <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', padding:'12px 14px', borderBottom:'1px solid var(--border-1)', flexShrink:0 }}>
           <div style={{ display:'flex', alignItems:'center', gap:8 }}>
             <div style={{ width:32, height:32, borderRadius:8, overflow:'hidden', flexShrink:0 }}>
-              <NXKLogoMark size={32} />
+              <NXKLogoMark size={32}/>
             </div>
             <div>
               <p style={{ fontFamily:'Syne,sans-serif', fontSize:11, fontWeight:800, letterSpacing:'0.14em', color:'var(--text-primary)', lineHeight:1 }}>NXK</p>
@@ -120,11 +121,10 @@ export default function Sidebar({ mobileOpen, onMobileClose }) {
           </div>
           <button onClick={onMobileClose} className="sidebar-close-btn"
             style={{ background:'transparent', border:'none', color:'var(--text-muted)', cursor:'pointer', padding:4, borderRadius:6, display:'none' }}>
-            <X size={16} />
+            <X size={16}/>
           </button>
         </div>
 
-        {/* Nav */}
         <nav style={{ flex:1, overflowY:'auto', padding:'12px 10px' }}>
           {groups.map(group => (
             <div key={group.group} style={{ marginBottom:20 }}>
@@ -139,7 +139,7 @@ export default function Sidebar({ mobileOpen, onMobileClose }) {
                       end={['/team-manager','/player','/super-admin'].includes(item.to)}
                       className={({ isActive }) => `sidebar-item${isActive?' active':''}`}
                       onClick={onMobileClose}>
-                      <Icon size={14} strokeWidth={1.75} style={{ flexShrink:0 }} />
+                      <Icon size={14} strokeWidth={1.75} style={{ flexShrink:0 }}/>
                       <span style={{ flex:1 }}>{item.label}</span>
                     </NavLink>
                   )
@@ -149,7 +149,6 @@ export default function Sidebar({ mobileOpen, onMobileClose }) {
           ))}
         </nav>
 
-        {/* User footer */}
         <div style={{ padding:'10px 12px', borderTop:'1px solid var(--border-1)', display:'flex', alignItems:'center', gap:8, flexShrink:0 }}>
           <div style={{ width:28, height:28, borderRadius:8, background:'var(--brand-glow)', border:'1px solid var(--brand-border)', display:'flex', alignItems:'center', justifyContent:'center', fontSize:10, fontWeight:700, color:'var(--brand)', fontFamily:'Syne,sans-serif', flexShrink:0 }}>
             {initials}
@@ -162,7 +161,7 @@ export default function Sidebar({ mobileOpen, onMobileClose }) {
             style={{ flexShrink:0, padding:6, borderRadius:6, background:'transparent', border:'none', color:'var(--text-dim)', cursor:'pointer', transition:'all 0.15s' }}
             onMouseEnter={e=>{ e.currentTarget.style.color='var(--red)'; e.currentTarget.style.background='var(--red-bg)' }}
             onMouseLeave={e=>{ e.currentTarget.style.color='var(--text-dim)'; e.currentTarget.style.background='transparent' }}>
-            <LogOut size={13} strokeWidth={1.75} />
+            <LogOut size={13} strokeWidth={1.75}/>
           </button>
         </div>
       </aside>
