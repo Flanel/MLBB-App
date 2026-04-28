@@ -4,9 +4,11 @@ import { useAuth } from '@/hooks/useAuth'
 
 // Auth
 import LoginPage from '@/pages/auth/LoginPage'
-
-// Public registration via invite link
 import InviteRegisterPage from '@/pages/register/InviteRegisterPage'
+
+// Profile + TopUp (semua role)
+import ProfilePage from '@/pages/profile/ProfilePage'
+import TopUpPage   from '@/pages/topup/TopUpPage'
 
 // Super Admin
 import SAOverviewPage  from '@/pages/dashboard/super-admin/OverviewPage'
@@ -21,6 +23,7 @@ import TeamDataPage    from '@/pages/dashboard/super-admin/TeamDataPage'
 // Team Manager
 import TmDashboard     from '@/pages/dashboard/team-manager/DashboardPage'
 import RosterPage      from '@/pages/dashboard/team-manager/RosterPage'
+import SquadPage       from '@/pages/dashboard/team-manager/SquadPage'
 import MatchesPage     from '@/pages/dashboard/team-manager/MatchesPage'
 import TmTournaments   from '@/pages/dashboard/team-manager/TournamentsPage'
 import AnalyticsPage   from '@/pages/dashboard/team-manager/AnalyticsPage'
@@ -33,7 +36,6 @@ import TmApprovalsPage from '@/pages/dashboard/team-manager/ApprovalsPage'
 import PlayerDashboard    from '@/pages/dashboard/player/DashboardPage'
 import HistoryPage        from '@/pages/dashboard/player/HistoryPage'
 import PlayerTournaments  from '@/pages/dashboard/player/TournamentsPage'
-import ActivityPage       from '@/pages/dashboard/player/ActivityPage'
 import PlayerSchedulePage from '@/pages/dashboard/player/SchedulePage'
 
 const SA  = ['super_admin']
@@ -41,51 +43,42 @@ const TMS = ['super_admin','team_manager','staff']
 const TM  = ['super_admin','team_manager']
 const ALL = ['super_admin','team_manager','staff','player']
 
-// FIX BUG #6: DashboardRedirect sebelumnya melakukan map[null] → '/login'
-// karena ada window singkat saat loading=false tapi role masih null.
-// Fix: tampilkan null (spinner sudah ada di ProtectedRoute) jika role belum ada.
 function DashboardRedirect() {
   const { role, loading } = useAuth()
-  console.log('🧭 [DashboardRedirect] loading:', loading, '| role:', role)
-  // Jika masih loading ATAU role belum ter-set, tunggu — jangan redirect prematur.
-  if (loading || !role) {
-    console.log('🧭 [DashboardRedirect] → waiting (loading or no role)')
-    return null
-  }
-  const map = {
-    super_admin:  '/super-admin',
-    team_manager: '/team-manager',
-    staff:        '/team-manager',
-    player:       '/player',
-  }
-  console.log('🧭 [DashboardRedirect] → navigating to', map[role] || '/super-admin')
-  return <Navigate to={map[role] || '/super-admin'} replace />
+  if (loading || !role) return null
+  const map = { super_admin:'/super-admin', team_manager:'/team-manager', staff:'/team-manager', player:'/player' }
+  return <Navigate to={map[role]||'/super-admin'} replace />
 }
 
 export default function App() {
   return (
     <BrowserRouter>
       <Routes>
-        {/* Public routes */}
+        {/* Public */}
         <Route path="/login"           element={<LoginPage />} />
         <Route path="/register/:token" element={<InviteRegisterPage />} />
 
         <Route path="/"          element={<Navigate to="/dashboard" replace />} />
         <Route path="/dashboard" element={<ProtectedRoute allowedRoles={ALL}><DashboardRedirect /></ProtectedRoute>} />
 
+        {/* Shared — semua role */}
+        <Route path="/profile" element={<ProtectedRoute allowedRoles={ALL}><ProfilePage /></ProtectedRoute>} />
+        <Route path="/topup"   element={<ProtectedRoute allowedRoles={ALL}><TopUpPage /></ProtectedRoute>} />
+
         {/* Super Admin */}
-        <Route path="/super-admin"           element={<ProtectedRoute allowedRoles={SA}><SAOverviewPage /></ProtectedRoute>} />
-        <Route path="/super-admin/teams"     element={<ProtectedRoute allowedRoles={SA}><TeamsPage /></ProtectedRoute>} />
-        <Route path="/super-admin/users"     element={<ProtectedRoute allowedRoles={SA}><UsersPage /></ProtectedRoute>} />
-        <Route path="/super-admin/audit"     element={<ProtectedRoute allowedRoles={SA}><AuditPage /></ProtectedRoute>} />
-        <Route path="/super-admin/settings"  element={<ProtectedRoute allowedRoles={SA}><SettingsPage /></ProtectedRoute>} />
-        <Route path="/super-admin/invite"    element={<ProtectedRoute allowedRoles={SA}><SAInvitePage /></ProtectedRoute>} />
-        <Route path="/super-admin/approvals" element={<ProtectedRoute allowedRoles={SA}><SAApprovalsPage /></ProtectedRoute>} />
+        <Route path="/super-admin"                    element={<ProtectedRoute allowedRoles={SA}><SAOverviewPage /></ProtectedRoute>} />
+        <Route path="/super-admin/teams"              element={<ProtectedRoute allowedRoles={SA}><TeamsPage /></ProtectedRoute>} />
+        <Route path="/super-admin/users"              element={<ProtectedRoute allowedRoles={SA}><UsersPage /></ProtectedRoute>} />
+        <Route path="/super-admin/audit"              element={<ProtectedRoute allowedRoles={SA}><AuditPage /></ProtectedRoute>} />
+        <Route path="/super-admin/settings"           element={<ProtectedRoute allowedRoles={SA}><SettingsPage /></ProtectedRoute>} />
+        <Route path="/super-admin/invite"             element={<ProtectedRoute allowedRoles={SA}><SAInvitePage /></ProtectedRoute>} />
+        <Route path="/super-admin/approvals"          element={<ProtectedRoute allowedRoles={SA}><SAApprovalsPage /></ProtectedRoute>} />
         <Route path="/super-admin/teams/:teamId/data" element={<ProtectedRoute allowedRoles={SA}><TeamDataPage /></ProtectedRoute>} />
 
         {/* Team Manager + Staff */}
         <Route path="/team-manager"             element={<ProtectedRoute allowedRoles={TMS}><TmDashboard /></ProtectedRoute>} />
         <Route path="/team-manager/roster"      element={<ProtectedRoute allowedRoles={TMS}><RosterPage /></ProtectedRoute>} />
+        <Route path="/team-manager/squad"       element={<ProtectedRoute allowedRoles={TMS}><SquadPage /></ProtectedRoute>} />
         <Route path="/team-manager/matches"     element={<ProtectedRoute allowedRoles={TMS}><MatchesPage /></ProtectedRoute>} />
         <Route path="/team-manager/tournaments" element={<ProtectedRoute allowedRoles={TMS}><TmTournaments /></ProtectedRoute>} />
         <Route path="/team-manager/analytics"   element={<ProtectedRoute allowedRoles={TMS}><AnalyticsPage /></ProtectedRoute>} />
@@ -98,7 +91,6 @@ export default function App() {
         <Route path="/player"             element={<ProtectedRoute allowedRoles={ALL}><PlayerDashboard /></ProtectedRoute>} />
         <Route path="/player/history"     element={<ProtectedRoute allowedRoles={ALL}><HistoryPage /></ProtectedRoute>} />
         <Route path="/player/tournaments" element={<ProtectedRoute allowedRoles={ALL}><PlayerTournaments /></ProtectedRoute>} />
-        <Route path="/player/activity"    element={<ProtectedRoute allowedRoles={ALL}><ActivityPage /></ProtectedRoute>} />
         <Route path="/player/schedule"    element={<ProtectedRoute allowedRoles={ALL}><PlayerSchedulePage /></ProtectedRoute>} />
 
         <Route path="*" element={<Navigate to="/dashboard" replace />} />

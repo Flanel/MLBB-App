@@ -124,7 +124,7 @@ function StaffCard({ u, onActivate }) {
 
         <div style={{ background:'rgba(59,130,246,0.07)', border:'1px solid rgba(59,130,246,0.15)', borderRadius:6, padding:'7px 10px', marginBottom:12 }}>
           <p style={{ fontSize:11, color:'#60a5fa' }}>
-            Menunggu verifikasi email + aktivasi dari Super Admin
+            Menunggu verifikasi & aktivasi dari Super Admin
           </p>
         </div>
 

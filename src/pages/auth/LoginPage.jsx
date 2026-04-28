@@ -10,10 +10,10 @@
 //   SETELAH AuthContext benar-benar set user (yaitu saat SIGNED_IN sudah diproses).
 
 import { useState, useEffect } from 'react'
-import { useNavigate, useSearchParams } from 'react-router-dom'
+import { useNavigate, useSearchParams, useLocation } from 'react-router-dom'
 import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/hooks/useAuth'
-import { Eye, EyeOff, Mail, AlertTriangle } from 'lucide-react'
+import { Eye, EyeOff, Mail, AlertTriangle, CheckCircle } from 'lucide-react'
 
 export default function LoginPage() {
   const [email, setEmail]         = useState('')
@@ -24,11 +24,15 @@ export default function LoginPage() {
   const [loading, setLoading]     = useState(false)
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
+  const location = useLocation()
 
   // FIX BUG #1: ambil user dari AuthContext
   const { user } = useAuth()
 
-  const isDeactivated = searchParams.get('reason') === 'deactivated'
+  const isDeactivated   = searchParams.get('reason') === 'deactivated'
+  const registeredState = location.state?.registered
+  const pendingApproval = location.state?.pendingApproval
+  const registeredRole  = location.state?.role
 
   // FIX BUG #1: navigate hanya setelah AuthContext set user (SIGNED_IN sudah diproses)
   useEffect(() => {
@@ -124,6 +128,26 @@ export default function LoginPage() {
           <div style={{ background:'rgba(255,77,109,0.08)', border:'1px solid rgba(255,77,109,0.22)', borderRadius:10, padding:'12px 16px', marginBottom:16, display:'flex', alignItems:'center', gap:10, color:'var(--red)', fontSize:13 }}>
             <AlertTriangle size={15} style={{ flexShrink:0 }} />
             <span>Sesimu dihentikan — tim kamu telah dinonaktifkan oleh administrator.</span>
+          </div>
+        )}
+
+        {registeredState && !pendingApproval && (
+          <div style={{ background:'rgba(34,197,94,0.08)', border:'1px solid rgba(34,197,94,0.25)', borderRadius:10, padding:'12px 16px', marginBottom:16, display:'flex', alignItems:'flex-start', gap:10, fontSize:13 }}>
+            <CheckCircle size={15} style={{ color:'var(--green)', flexShrink:0, marginTop:1 }} />
+            <div>
+              <p style={{ color:'var(--green)', fontWeight:600, marginBottom:2 }}>Pendaftaran berhasil! 🎉</p>
+              <p style={{ color:'var(--text-muted)', fontSize:12 }}>Silakan login dengan email dan password yang kamu daftarkan.</p>
+            </div>
+          </div>
+        )}
+
+        {registeredState && pendingApproval && (
+          <div style={{ background:'rgba(245,158,11,0.08)', border:'1px solid rgba(245,158,11,0.25)', borderRadius:10, padding:'12px 16px', marginBottom:16, display:'flex', alignItems:'flex-start', gap:10, fontSize:13 }}>
+            <AlertTriangle size={15} style={{ color:'#f59e0b', flexShrink:0, marginTop:1 }} />
+            <div>
+              <p style={{ color:'#f59e0b', fontWeight:600, marginBottom:2 }}>Pendaftaran berhasil — menunggu verifikasi</p>
+              <p style={{ color:'var(--text-muted)', fontSize:12 }}>Akun Team Manager kamu sedang dalam review oleh Super Admin. Kamu akan bisa login setelah diapprove.</p>
+            </div>
           </div>
         )}
 

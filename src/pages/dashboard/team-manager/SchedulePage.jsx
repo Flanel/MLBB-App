@@ -10,27 +10,25 @@ import {
   eachDayOfInterval, isSameMonth, isSameDay, isToday, addMonths, subMonths
 } from 'date-fns'
 import { id as localeId } from 'date-fns/locale'
-import { Plus, ChevronLeft, ChevronRight, CheckCircle, XCircle, HelpCircle, Trash2, Calendar, Clock, MapPin, AlertCircle } from 'lucide-react'
+import { Plus, ChevronLeft, ChevronRight, CheckCircle, XCircle, HelpCircle, Trash2, Calendar, Clock, MapPin, Users, ChevronDown, ChevronUp } from 'lucide-react'
 
 const SESSION_TYPES = ['Latihan Tim', 'Scrim', 'Tournament', 'Review/VOD', 'Physical Training', 'Meeting']
-
 const TYPE_COLOR = {
   'Latihan Tim': 'var(--brand)', 'Scrim': 'var(--blue)', 'Tournament': 'var(--green)',
   'Review/VOD': 'var(--amber)', 'Physical Training': 'var(--red)', 'Meeting': 'var(--purple)',
 }
-
 const DAYS = ['Min', 'Sen', 'Sel', 'Rab', 'Kam', 'Jum', 'Sab']
 
 export default function SchedulePage() {
   const { user } = useAuth()
   const { addToast } = useToast()
-  const [sessions, setSessions]       = useState([])
-  const [teamId, setTeamId]           = useState(null)
-  const [loading, setLoading]         = useState(true)
-  const [createOpen, setCreateOpen]   = useState(false)
+  const [sessions, setSessions]         = useState([])
+  const [teamId, setTeamId]             = useState(null)
+  const [loading, setLoading]           = useState(true)
+  const [createOpen, setCreateOpen]     = useState(false)
   const [deleteTarget, setDeleteTarget] = useState(null)
-  const [saving, setSaving]           = useState(false)
-  const [deleting, setDeleting]       = useState(false)
+  const [saving, setSaving]             = useState(false)
+  const [deleting, setDeleting]         = useState(false)
   const [currentMonth, setCurrentMonth] = useState(new Date())
   const [selectedDate, setSelectedDate] = useState(new Date())
   const [form, setForm] = useState({
@@ -46,7 +44,7 @@ export default function SchedulePage() {
       setTeamId(profile.team_id)
       const { data } = await supabase
         .from('schedules')
-        .select('*, schedule_availability(*, users(name))')
+        .select('*, schedule_availability(*, users(name, ign))')
         .eq('team_id', profile.team_id)
         .order('date').order('start_time')
       setSessions(data || [])
@@ -55,7 +53,6 @@ export default function SchedulePage() {
     load()
   }, [user])
 
-  // Build map: dateString → sessions[]
   const sessionMap = useMemo(() => {
     const map = {}
     sessions.forEach(s => {
@@ -65,21 +62,17 @@ export default function SchedulePage() {
     return map
   }, [sessions])
 
-  // Calendar days for current month view
   const calDays = useMemo(() => {
     const start = startOfWeek(startOfMonth(currentMonth), { weekStartsOn: 0 })
     const end   = endOfWeek(endOfMonth(currentMonth), { weekStartsOn: 0 })
     return eachDayOfInterval({ start, end })
   }, [currentMonth])
 
-  const selectedKey     = format(selectedDate, 'yyyy-MM-dd')
+  const selectedKey      = format(selectedDate, 'yyyy-MM-dd')
   const selectedSessions = sessionMap[selectedKey] || []
 
   async function handleCreate() {
-    if (!form.title.trim() || !form.date) {
-      addToast({ message: 'Isi judul dan tanggal.', type: 'danger' })
-      return
-    }
+    if (!form.title.trim() || !form.date) { addToast({ message: 'Isi judul dan tanggal.', type: 'danger' }); return }
     setSaving(true)
     const { data, error } = await supabase.from('schedules').insert({
       team_id: teamId, title: form.title.trim(), session_type: form.type,
@@ -93,7 +86,6 @@ export default function SchedulePage() {
     await supabase.from('audit_logs').insert({ user_id: user.id, action: 'Buat jadwal', target: form.title })
     addToast({ message: `Jadwal "${form.title}" dibuat.`, type: 'success' })
     setCreateOpen(false)
-    // Navigate calendar to the new session's date
     const newDate = parseISO(form.date)
     setSelectedDate(newDate)
     setCurrentMonth(newDate)
@@ -104,7 +96,6 @@ export default function SchedulePage() {
   async function confirmDelete() {
     if (!deleteTarget) return
     setDeleting(true)
-    // Bug 7 fix: delete schedule_availability first
     await supabase.from('schedule_availability').delete().eq('schedule_id', deleteTarget.id)
     const { error } = await supabase.from('schedules').delete().eq('id', deleteTarget.id)
     if (!error) {
@@ -117,10 +108,6 @@ export default function SchedulePage() {
     setDeleting(false)
   }
 
-  function countAvl(session, status) {
-    return session.schedule_availability?.filter(a => a.status === status).length || 0
-  }
-
   const today = new Date()
 
   return (
@@ -130,10 +117,7 @@ export default function SchedulePage() {
           <h2 style={{ fontFamily:'Syne,sans-serif', fontSize:15, fontWeight:700, color:'var(--text-primary)', marginBottom:3 }}>Jadwal Tim</h2>
           <p style={{ fontSize:12, color:'var(--text-muted)' }}>Kelola jadwal latihan, scrim, dan tournament.</p>
         </div>
-        <button className="btn btn-primary" style={{ gap:6 }} onClick={() => {
-          setForm(f => ({ ...f, date: selectedKey }))
-          setCreateOpen(true)
-        }}>
+        <button className="btn btn-primary" style={{ gap:6 }} onClick={() => { setForm(f => ({ ...f, date: selectedKey })); setCreateOpen(true) }}>
           <Plus size={13} />Buat Jadwal
         </button>
       </div>
@@ -142,46 +126,30 @@ export default function SchedulePage() {
         <p style={{ textAlign:'center', color:'var(--text-dim)', padding:'32px 0', fontSize:12 }}>Memuat...</p>
       ) : (
         <div className="cal-layout" style={{ display:'grid', gridTemplateColumns:'320px 1fr', gap:16, alignItems:'start' }}>
-
-          {/* ── Left: Calendar ── */}
+          {/* Calendar */}
           <div className="card" style={{ padding:0, overflow:'hidden' }}>
-            {/* Month header */}
             <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', padding:'14px 16px', borderBottom:'1px solid var(--border-1)' }}>
-              <button className="btn" style={{ padding:'4px 8px' }} onClick={() => setCurrentMonth(m => subMonths(m, 1))}>
-                <ChevronLeft size={13} />
-              </button>
+              <button className="btn" style={{ padding:'4px 8px' }} onClick={() => setCurrentMonth(m => subMonths(m, 1))}><ChevronLeft size={13} /></button>
               <p style={{ fontFamily:'Syne,sans-serif', fontSize:13, fontWeight:700, color:'var(--text-primary)' }}>
                 {format(currentMonth, 'MMMM yyyy', { locale: localeId })}
               </p>
-              <button className="btn" style={{ padding:'4px 8px' }} onClick={() => setCurrentMonth(m => addMonths(m, 1))}>
-                <ChevronRight size={13} />
-              </button>
+              <button className="btn" style={{ padding:'4px 8px' }} onClick={() => setCurrentMonth(m => addMonths(m, 1))}><ChevronRight size={13} /></button>
             </div>
-
-            {/* Day names */}
             <div style={{ display:'grid', gridTemplateColumns:'repeat(7,1fr)', padding:'10px 12px 4px', gap:2 }}>
-              {DAYS.map(d => (
-                <p key={d} style={{ textAlign:'center', fontSize:10, fontWeight:600, color:'var(--text-dim)', fontFamily:'Syne,sans-serif', letterSpacing:'0.05em' }}>
-                  {d}
-                </p>
-              ))}
+              {DAYS.map(d => <p key={d} style={{ textAlign:'center', fontSize:10, fontWeight:600, color:'var(--text-dim)', fontFamily:'Syne,sans-serif', letterSpacing:'0.05em' }}>{d}</p>)}
             </div>
-
-            {/* Day grid */}
             <div style={{ display:'grid', gridTemplateColumns:'repeat(7,1fr)', padding:'4px 12px 12px', gap:2 }}>
               {calDays.map(day => {
-                const key      = format(day, 'yyyy-MM-dd')
-                const hasSess  = !!sessionMap[key]?.length
+                const key = format(day, 'yyyy-MM-dd')
+                const hasSess = !!sessionMap[key]?.length
                 const isSelected = isSameDay(day, selectedDate)
-                const isTod    = isToday(day)
-                const inMonth  = isSameMonth(day, currentMonth)
-
+                const isTod = isToday(day)
+                const inMonth = isSameMonth(day, currentMonth)
                 let cls = 'cal-day'
-                if (!inMonth)    cls += ' other-month'
+                if (!inMonth) cls += ' other-month'
                 else if (isSelected) cls += ' selected'
-                else if (isTod)  cls += ' today'
+                else if (isTod) cls += ' today'
                 else if (hasSess) cls += ' has-event'
-
                 return (
                   <div key={key} className={cls} onClick={() => { setSelectedDate(day); setCurrentMonth(day) }}>
                     {format(day, 'd')}
@@ -190,8 +158,6 @@ export default function SchedulePage() {
                 )
               })}
             </div>
-
-            {/* Legend */}
             <div style={{ padding:'10px 16px 14px', borderTop:'1px solid var(--border-1)', display:'flex', flexWrap:'wrap', gap:10 }}>
               {Object.entries(TYPE_COLOR).map(([type, color]) => (
                 <div key={type} style={{ display:'flex', alignItems:'center', gap:4 }}>
@@ -202,7 +168,7 @@ export default function SchedulePage() {
             </div>
           </div>
 
-          {/* ── Right: Sessions for selected date ── */}
+          {/* Sessions */}
           <div>
             <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:12 }}>
               <div>
@@ -213,9 +179,7 @@ export default function SchedulePage() {
                   {selectedSessions.length === 0 ? 'Tidak ada jadwal' : `${selectedSessions.length} sesi`}
                 </p>
               </div>
-              {isToday(selectedDate) && (
-                <span className="badge badge-cyan" style={{ fontSize:10 }}>Hari Ini</span>
-              )}
+              {isToday(selectedDate) && <span className="badge badge-cyan" style={{ fontSize:10 }}>Hari Ini</span>}
             </div>
 
             {selectedSessions.length === 0 ? (
@@ -230,12 +194,11 @@ export default function SchedulePage() {
             ) : (
               <div style={{ display:'flex', flexDirection:'column', gap:10 }}>
                 {selectedSessions.map(s => (
-                  <SessionCard key={s.id} session={s} onDelete={setDeleteTarget} countAvl={countAvl} />
+                  <SessionCard key={s.id} session={s} onDelete={setDeleteTarget} />
                 ))}
               </div>
             )}
 
-            {/* Upcoming mini list */}
             {sessions.filter(s => s.date > selectedKey).length > 0 && (
               <div style={{ marginTop:24 }}>
                 <p style={{ fontSize:11, fontWeight:600, textTransform:'uppercase', letterSpacing:'0.08em', color:'var(--text-dim)', marginBottom:10, fontFamily:'Syne,sans-serif' }}>
@@ -290,7 +253,7 @@ export default function SchedulePage() {
         </div>
       </Modal>
 
-      {/* Bug 7 fix: Delete confirmation modal */}
+      {/* Delete Modal */}
       <Modal open={!!deleteTarget} onClose={() => setDeleteTarget(null)} title="Hapus Jadwal" size="sm"
         footer={<><Button onClick={() => setDeleteTarget(null)} disabled={deleting}>Batal</Button><Button variant="danger" onClick={confirmDelete} disabled={deleting}>{deleting ? 'Menghapus...' : 'Hapus'}</Button></>}
       >
@@ -308,12 +271,19 @@ export default function SchedulePage() {
   )
 }
 
-function SessionCard({ session: s, onDelete, countAvl }) {
-  const yes   = countAvl(s, 'yes')
-  const no    = countAvl(s, 'no')
-  const maybe = countAvl(s, 'maybe')
-  const color = TYPE_COLOR[s.session_type] || 'var(--brand)'
-  const isPast = s.date < new Date().toISOString().split('T')[0]
+// ── SessionCard dengan attendance breakdown ────────────────────────────────────
+function SessionCard({ session: s, onDelete }) {
+  const [expanded, setExpanded] = useState(false)
+
+  const avl = s.schedule_availability || []
+  const groups = {
+    yes:   avl.filter(a => a.status === 'yes'),
+    no:    avl.filter(a => a.status === 'no'),
+    maybe: avl.filter(a => a.status === 'maybe'),
+  }
+  const total   = avl.length
+  const color   = TYPE_COLOR[s.session_type] || 'var(--brand)'
+  const isPast  = s.date < new Date().toISOString().split('T')[0]
 
   return (
     <div className="card" style={{ opacity: isPast ? 0.65 : 1, borderLeft:`3px solid ${color}`, paddingLeft:14 }}>
@@ -329,12 +299,69 @@ function SessionCard({ session: s, onDelete, countAvl }) {
             {s.location && <span style={{ display:'flex', alignItems:'center', gap:4 }}><MapPin size={11} />{s.location}</span>}
           </div>
           {s.notes && <p style={{ fontSize:11, color:'var(--text-dim)', marginTop:6 }}>{s.notes}</p>}
-          {s.schedule_availability?.length > 0 && (
-            <div style={{ display:'flex', gap:12, marginTop:8 }}>
-              <span style={{ fontSize:11, color:'var(--green)', display:'flex', alignItems:'center', gap:4 }}><CheckCircle size={10}/>{yes} bisa</span>
-              <span style={{ fontSize:11, color:'var(--red)', display:'flex', alignItems:'center', gap:4 }}><XCircle size={10}/>{no} tidak</span>
-              <span style={{ fontSize:11, color:'var(--amber)', display:'flex', alignItems:'center', gap:4 }}><HelpCircle size={10}/>{maybe} mungkin</span>
+
+          {/* Attendance summary */}
+          {total > 0 && (
+            <div style={{ marginTop:10 }}>
+              <button
+                onClick={() => setExpanded(v => !v)}
+                style={{ display:'flex', alignItems:'center', gap:8, background:'none', border:'none', cursor:'pointer', padding:0 }}
+              >
+                <span style={{ fontSize:11, color:'var(--green)', display:'flex', alignItems:'center', gap:4 }}>
+                  <CheckCircle size={10}/>{groups.yes.length} bisa
+                </span>
+                <span style={{ fontSize:11, color:'var(--red)', display:'flex', alignItems:'center', gap:4 }}>
+                  <XCircle size={10}/>{groups.no.length} tidak
+                </span>
+                <span style={{ fontSize:11, color:'var(--amber)', display:'flex', alignItems:'center', gap:4 }}>
+                  <HelpCircle size={10}/>{groups.maybe.length} mungkin
+                </span>
+                <span style={{ fontSize:11, color:'var(--text-dim)', display:'flex', alignItems:'center', gap:3 }}>
+                  <Users size={10}/>{total} respon
+                  {expanded ? <ChevronUp size={10}/> : <ChevronDown size={10}/>}
+                </span>
+              </button>
+
+              {/* Expanded breakdown */}
+              {expanded && (
+                <div style={{ marginTop:10, display:'flex', flexDirection:'column', gap:8 }}>
+                  {[
+                    { key:'yes',   label:'✅ Bisa Hadir',   color:'var(--green)',  list: groups.yes },
+                    { key:'no',    label:'❌ Tidak Bisa',   color:'var(--red)',    list: groups.no },
+                    { key:'maybe', label:'❓ Mungkin',       color:'var(--amber)',  list: groups.maybe },
+                  ].map(({ key, label, color: c, list }) => (
+                    list.length > 0 && (
+                      <div key={key} style={{ background:'var(--bg-elevated)', borderRadius:8, padding:'10px 12px' }}>
+                        <p style={{ fontSize:10, fontWeight:600, color:c, marginBottom:6, fontFamily:'Syne,sans-serif' }}>{label} ({list.length})</p>
+                        <div style={{ display:'flex', flexDirection:'column', gap:4 }}>
+                          {list.map(a => (
+                            <div key={a.id} style={{ display:'flex', alignItems:'flex-start', gap:8 }}>
+                              <span style={{ fontSize:12, color:'var(--text-secondary)', fontWeight:500, minWidth:90 }}>
+                                {a.users?.ign || a.users?.name || '—'}
+                              </span>
+                              {a.notes && (
+                                <span style={{ fontSize:11, color:'var(--text-muted)', fontStyle:'italic' }}>
+                                  "{a.notes}"
+                                </span>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )
+                  ))}
+                  {groups.yes.length + groups.no.length + groups.maybe.length === 0 && (
+                    <p style={{ fontSize:11, color:'var(--text-dim)' }}>Belum ada respon.</p>
+                  )}
+                </div>
+              )}
             </div>
+          )}
+
+          {total === 0 && (
+            <p style={{ fontSize:11, color:'var(--text-dim)', marginTop:8, display:'flex', alignItems:'center', gap:4 }}>
+              <Users size={10}/> Belum ada respon kehadiran
+            </p>
           )}
         </div>
         {!isPast && (

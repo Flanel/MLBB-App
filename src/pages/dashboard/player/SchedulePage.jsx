@@ -20,7 +20,6 @@ const TYPE_COLOR = {
   'Latihan Tim': 'var(--brand)', 'Scrim': 'var(--blue)', 'Tournament': 'var(--green)',
   'Review/VOD': 'var(--amber)', 'Physical Training': 'var(--red)', 'Meeting': 'var(--purple)',
 }
-
 const DAYS = ['Min', 'Sen', 'Sel', 'Rab', 'Kam', 'Jum', 'Sab']
 
 export default function PlayerSchedulePage() {
@@ -29,6 +28,7 @@ export default function PlayerSchedulePage() {
   const [sessions, setSessions]     = useState([])
   const [loading, setLoading]       = useState(true)
   const [saving, setSaving]         = useState({})
+  const [notesMap, setNotesMap]     = useState({}) // sessionId → draft notes
   const [currentMonth, setCurrentMonth] = useState(new Date())
   const [selectedDate, setSelectedDate] = useState(new Date())
 
@@ -37,15 +37,19 @@ export default function PlayerSchedulePage() {
       if (!user) return
       const { data: profile } = await supabase.from('users').select('team_id').eq('id', user.id).single()
       if (!profile?.team_id) { setLoading(false); return }
-
-      // Bug 3 fix: single query — no more wasted double fetch
       const { data } = await supabase
         .from('schedules')
         .select('*, schedule_availability(id, user_id, status, notes)')
         .eq('team_id', profile.team_id)
         .order('date').order('start_time')
-
       setSessions(data || [])
+      // Pre-populate notesMap from existing responses
+      const nm = {}
+      ;(data || []).forEach(s => {
+        const mine = s.schedule_availability?.find(a => a.user_id === user?.id)
+        if (mine?.notes) nm[s.id] = mine.notes
+      })
+      setNotesMap(nm)
       setLoading(false)
     }
     load()
@@ -76,15 +80,17 @@ export default function PlayerSchedulePage() {
   async function respond(session, status) {
     setSaving(prev => ({ ...prev, [session.id]: true }))
     const existing = getMyAvl(session)
+    const notes = notesMap[session.id] || null
+
     if (existing) {
-      await supabase.from('schedule_availability').update({ status }).eq('id', existing.id)
+      await supabase.from('schedule_availability').update({ status, notes }).eq('id', existing.id)
     } else {
-      await supabase.from('schedule_availability').insert({ schedule_id: session.id, user_id: user.id, status })
+      await supabase.from('schedule_availability').insert({ schedule_id: session.id, user_id: user.id, status, notes })
     }
     setSessions(prev => prev.map(s => {
       if (s.id !== session.id) return s
       const filtered = (s.schedule_availability || []).filter(a => a.user_id !== user.id)
-      return { ...s, schedule_availability: [...filtered, { user_id: user.id, status }] }
+      return { ...s, schedule_availability: [...filtered, { user_id: user.id, status, notes }] }
     }))
     addToast({ message: `Respon "${session.title}" disimpan.`, type:'success' })
     setSaving(prev => ({ ...prev, [session.id]: false }))
@@ -101,41 +107,30 @@ export default function PlayerSchedulePage() {
         <p style={{ textAlign:'center', color:'var(--text-dim)', padding:'32px 0', fontSize:12 }}>Memuat...</p>
       ) : (
         <div className="cal-layout" style={{ display:'grid', gridTemplateColumns:'300px 1fr', gap:16, alignItems:'start' }}>
-
           {/* Calendar */}
           <div className="card" style={{ padding:0, overflow:'hidden' }}>
             <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', padding:'14px 16px', borderBottom:'1px solid var(--border-1)' }}>
-              <button className="btn" style={{ padding:'4px 8px' }} onClick={() => setCurrentMonth(m => subMonths(m, 1))}>
-                <ChevronLeft size={13} />
-              </button>
+              <button className="btn" style={{ padding:'4px 8px' }} onClick={() => setCurrentMonth(m => subMonths(m, 1))}><ChevronLeft size={13} /></button>
               <p style={{ fontFamily:'Syne,sans-serif', fontSize:13, fontWeight:700, color:'var(--text-primary)' }}>
                 {format(currentMonth, 'MMMM yyyy', { locale: localeId })}
               </p>
-              <button className="btn" style={{ padding:'4px 8px' }} onClick={() => setCurrentMonth(m => addMonths(m, 1))}>
-                <ChevronRight size={13} />
-              </button>
+              <button className="btn" style={{ padding:'4px 8px' }} onClick={() => setCurrentMonth(m => addMonths(m, 1))}><ChevronRight size={13} /></button>
             </div>
-
             <div style={{ display:'grid', gridTemplateColumns:'repeat(7,1fr)', padding:'10px 12px 4px', gap:2 }}>
-              {DAYS.map(d => (
-                <p key={d} style={{ textAlign:'center', fontSize:10, fontWeight:600, color:'var(--text-dim)', fontFamily:'Syne,sans-serif', letterSpacing:'0.05em' }}>{d}</p>
-              ))}
+              {DAYS.map(d => <p key={d} style={{ textAlign:'center', fontSize:10, fontWeight:600, color:'var(--text-dim)', fontFamily:'Syne,sans-serif', letterSpacing:'0.05em' }}>{d}</p>)}
             </div>
-
             <div style={{ display:'grid', gridTemplateColumns:'repeat(7,1fr)', padding:'4px 12px 12px', gap:2 }}>
               {calDays.map(day => {
                 const key = format(day, 'yyyy-MM-dd')
-                const hasSess  = !!sessionMap[key]?.length
+                const hasSess    = !!sessionMap[key]?.length
                 const isSelected = isSameDay(day, selectedDate)
-                const isTod    = isToday(day)
-                const inMonth  = isSameMonth(day, currentMonth)
-
+                const isTod      = isToday(day)
+                const inMonth    = isSameMonth(day, currentMonth)
                 let cls = 'cal-day'
-                if (!inMonth)    cls += ' other-month'
+                if (!inMonth) cls += ' other-month'
                 else if (isSelected) cls += ' selected'
-                else if (isTod)  cls += ' today'
+                else if (isTod) cls += ' today'
                 else if (hasSess) cls += ' has-event'
-
                 return (
                   <div key={key} className={cls} onClick={() => { setSelectedDate(day); setCurrentMonth(day) }}>
                     {format(day, 'd')}
@@ -144,24 +139,17 @@ export default function PlayerSchedulePage() {
                 )
               })}
             </div>
-
-            {/* My pending responses */}
             <div style={{ padding:'10px 16px 14px', borderTop:'1px solid var(--border-1)' }}>
               {(() => {
                 const pending = sessions.filter(s => s.date >= new Date().toISOString().split('T')[0] && !getMyAvl(s))
-                return pending.length > 0 ? (
-                  <div style={{ display:'flex', alignItems:'center', gap:6 }}>
-                    <span style={{ width:6, height:6, borderRadius:'50%', background:'var(--amber)', flexShrink:0 }} />
-                    <p style={{ fontSize:11, color:'var(--amber)' }}>{pending.length} jadwal belum dikonfirmasi</p>
-                  </div>
-                ) : (
-                  <p style={{ fontSize:11, color:'var(--green)' }}>✓ Semua jadwal sudah dikonfirmasi</p>
-                )
+                return pending.length > 0
+                  ? <div style={{ display:'flex', alignItems:'center', gap:6 }}><span style={{ width:6, height:6, borderRadius:'50%', background:'var(--amber)', flexShrink:0 }} /><p style={{ fontSize:11, color:'var(--amber)' }}>{pending.length} jadwal belum dikonfirmasi</p></div>
+                  : <p style={{ fontSize:11, color:'var(--green)' }}>✓ Semua jadwal sudah dikonfirmasi</p>
               })()}
             </div>
           </div>
 
-          {/* Right: Sessions detail */}
+          {/* Sessions detail */}
           <div>
             <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:12 }}>
               <div>
@@ -172,9 +160,7 @@ export default function PlayerSchedulePage() {
                   {selectedSessions.length === 0 ? 'Tidak ada jadwal' : `${selectedSessions.length} sesi`}
                 </p>
               </div>
-              {isToday(selectedDate) && (
-                <span className="badge badge-cyan" style={{ fontSize:10 }}>Hari Ini</span>
-              )}
+              {isToday(selectedDate) && <span className="badge badge-cyan" style={{ fontSize:10 }}>Hari Ini</span>}
             </div>
 
             {selectedSessions.length === 0 ? (
@@ -185,9 +171,9 @@ export default function PlayerSchedulePage() {
             ) : (
               <div style={{ display:'flex', flexDirection:'column', gap:10 }}>
                 {selectedSessions.map(s => {
-                  const myAvl   = getMyAvl(s)
-                  const color   = TYPE_COLOR[s.session_type] || 'var(--brand)'
-                  const isPast  = s.date < new Date().toISOString().split('T')[0]
+                  const myAvl  = getMyAvl(s)
+                  const color  = TYPE_COLOR[s.session_type] || 'var(--brand)'
+                  const isPast = s.date < new Date().toISOString().split('T')[0]
 
                   return (
                     <div key={s.id} className="card" style={{ opacity: isPast ? 0.65 : 1, borderLeft:`3px solid ${color}`, paddingLeft:14 }}>
@@ -209,6 +195,28 @@ export default function PlayerSchedulePage() {
                           <p style={{ fontSize:10, fontWeight:600, textTransform:'uppercase', letterSpacing:'0.06em', color:'var(--text-dim)', marginBottom:8, fontFamily:'Syne,sans-serif' }}>
                             Konfirmasi Kehadiran
                           </p>
+                          {/* Current status */}
+                          {myAvl && (
+                            <div style={{ marginBottom:8, padding:'6px 10px', borderRadius:7, background:'var(--bg-elevated)', fontSize:11, color:'var(--text-muted)' }}>
+                              Status saat ini:{' '}
+                              <strong style={{ color: myAvl.status === 'yes' ? 'var(--green)' : myAvl.status === 'no' ? 'var(--red)' : 'var(--amber)' }}>
+                                {myAvl.status === 'yes' ? 'Bisa Hadir' : myAvl.status === 'no' ? 'Tidak Bisa' : 'Mungkin'}
+                              </strong>
+                              {myAvl.notes && <span> · "{myAvl.notes}"</span>}
+                            </div>
+                          )}
+
+                          {/* Notes / alasan input */}
+                          <div style={{ marginBottom:10 }}>
+                            <input
+                              className="form-input"
+                              placeholder="Alasan / catatan (opsional, contoh: ada ujian)"
+                              style={{ fontSize:12 }}
+                              value={notesMap[s.id] || ''}
+                              onChange={e => setNotesMap(prev => ({ ...prev, [s.id]: e.target.value }))}
+                            />
+                          </div>
+
                           <div style={{ display:'flex', gap:6, flexWrap:'wrap' }}>
                             {AVL.map(opt => {
                               const Ic = opt.icon
@@ -234,6 +242,16 @@ export default function PlayerSchedulePage() {
                             })}
                           </div>
                         </div>
+                      )}
+
+                      {isPast && myAvl && (
+                        <p style={{ fontSize:11, color:'var(--text-dim)' }}>
+                          Respon kamu:{' '}
+                          <strong style={{ color: myAvl.status === 'yes' ? 'var(--green)' : myAvl.status === 'no' ? 'var(--red)' : 'var(--amber)' }}>
+                            {myAvl.status === 'yes' ? 'Hadir' : myAvl.status === 'no' ? 'Tidak Hadir' : 'Mungkin'}
+                          </strong>
+                          {myAvl.notes && <span> · "{myAvl.notes}"</span>}
+                        </p>
                       )}
                     </div>
                   )
