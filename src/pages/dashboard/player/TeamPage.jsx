@@ -81,10 +81,17 @@ Catatan penting:
             { inline_data: { mime_type: mimeType, data: base64 } },
           ],
         }],
+        // [ENHANCEMENT]: Menurunkan sensitivitas filter untuk istilah game (KDA)
+        safetySettings: [
+          { category: "HARM_CATEGORY_DANGEROUS_CONTENT", threshold: "BLOCK_NONE" },
+          { category: "HARM_CATEGORY_HARASSMENT", threshold: "BLOCK_NONE" },
+          { category: "HARM_CATEGORY_HATE_SPEECH", threshold: "BLOCK_NONE" },
+          { category: "HARM_CATEGORY_SEXUALLY_EXPLICIT", threshold: "BLOCK_NONE" }
+        ],
         generationConfig: { 
           temperature: 0.1, 
           maxOutputTokens: 1024,
-          responseMimeType: "application/json"
+          responseMimeType: "application/json" 
         },
       }),
     }
@@ -93,10 +100,25 @@ Catatan penting:
     const err = await res.json()
     throw new Error(err?.error?.message || `Gemini error ${res.status}`)
   }
+  
   const data = await res.json()
-  const text = data.candidates?.[0]?.content?.parts?.[0]?.text || ''
+  const candidate = data.candidates?.[0]
+
+  // [ENHANCEMENT]: Deteksi jika gambar tetap ditolak oleh sistem keamanan Google
+  if (candidate?.finishReason === 'SAFETY') {
+    throw new Error("Analisis diblokir oleh Safety Filter Google. Coba gambar lain atau crop bagian yang tidak perlu.")
+  }
+
+  const text = candidate?.content?.parts?.[0]?.text || ''
+  
   // bersihkan fence jika ada
   const clean = text.replace(/```json|```/gi, '').trim()
+
+  // [ENHANCEMENT]: Validasi agar JSON.parse tidak crash jika teks kosong
+  if (!clean) {
+    throw new Error("Gagal mengekstrak data dari gambar. Pastikan screenshot terlihat jelas.")
+  }
+
   return JSON.parse(clean)
 }
 
