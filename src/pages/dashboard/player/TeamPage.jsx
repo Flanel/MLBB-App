@@ -1,4 +1,5 @@
-
+// TeamPage.jsx — Player view: info tim + captain input match via foto (Gemini Flash)
+// Gemini Vision API gratis via Google AI Studio → VITE_GEMINI_API_KEY
 
 import { useState, useEffect, useRef } from 'react'
 import DashboardLayout from '@/components/layout/DashboardLayout'
@@ -42,16 +43,35 @@ async function analyzeMatchImage(base64, mimeType = 'image/jpeg') {
   const apiKey = import.meta.env.VITE_GEMINI_API_KEY
   if (!apiKey) throw new Error('VITE_GEMINI_API_KEY belum diset di file .env')
 
-  // Prompt sekarang jauh lebih rapi karena struktur JSON diurus oleh responseSchema
   const prompt = `Kamu adalah asisten esports yang ahli membaca screenshot hasil match Mobile Legends: Bang Bang.
-Analisis gambar ini dan ekstrak informasinya.
+
+Analisis gambar ini dan ekstrak informasi berikut dalam format JSON murni (tanpa markdown, tanpa backtick):
+{
+  "opponent": "nama tim lawan atau 'Unknown'",
+  "result": "Win atau Loss",
+  "score": "skor seperti '3-1' atau '2-0' jika terlihat, kosong jika tidak ada",
+  "tournament": "nama turnamen jika terlihat, kosong jika tidak ada",
+  "round": "babak seperti 'Final', 'Semi-Final', 'Group Stage' jika terlihat, kosong jika tidak ada",
+  "players": [
+    {
+      "ign": "in-game name pemain",
+      "hero": "nama hero yang dipakai",
+      "kills": 0,
+      "deaths": 0,
+      "assists": 0,
+      "mvp": false
+    }
+  ]
+}
+
 Catatan penting:
-- result harus PERSIS "Win" atau "Loss"
-- mvp: true hanya jika ada ikon MVP/bintang di sebelah pemain tersebut
-- score, tournament, round bisa dikosongkan jika tidak ada.`
+- result harus PERSIS "Win" atau "Loss" (kapital huruf pertama saja)
+- Jika tidak bisa membaca dengan yakin, isi dengan nilai default yang masuk akal
+- players array bisa kosong [] jika stats tidak terlihat
+- mvp: true hanya jika ada ikon MVP/bintang di sebelah pemain tersebut`
 
   const res = await fetch(
-    `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`,
+    `https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash-latest:generateContent?key=${apiKey}`,
     {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -62,99 +82,34 @@ Catatan penting:
             { inline_data: { mime_type: mimeType, data: base64 } },
           ],
         }],
-        safetySettings: [
-          { category: "HARM_CATEGORY_DANGEROUS_CONTENT", threshold: "BLOCK_NONE" },
-          { category: "HARM_CATEGORY_HARASSMENT", threshold: "BLOCK_NONE" },
-          { category: "HARM_CATEGORY_HATE_SPEECH", threshold: "BLOCK_NONE" },
-          { category: "HARM_CATEGORY_SEXUALLY_EXPLICIT", threshold: "BLOCK_NONE" }
-        ],
-        // ... kode atas tetap sama ...
-        generationConfig: { 
-          temperature: 0.1, 
-          maxOutputTokens: 2048, // [ENHANCEMENT]: Dinaikkan agar JSON tidak mudah terpotong
-          responseMimeType: "application/json",
-          responseSchema: {
-            type: "OBJECT",
-            properties: {
-              opponent: { type: "STRING" },
-              result: { type: "STRING" },
-              score: { type: "STRING" },
-              tournament: { type: "STRING" },
-              round: { type: "STRING" },
-              players: {
-                type: "ARRAY",
-                items: {
-                  type: "OBJECT",
-                  properties: {
-                    ign: { type: "STRING" },
-                    hero: { type: "STRING" },
-                    kills: { type: "INTEGER" },
-                    deaths: { type: "INTEGER" },
-                    assists: { type: "INTEGER" },
-                    mvp: { type: "BOOLEAN" }
-                  }
-                }
-              }
-            }
-          }
-        },
+        generationConfig: { temperature: 0.1, maxOutputTokens: 1024 },
       }),
     }
   )
-  
   if (!res.ok) {
     const err = await res.json()
-    // Ini akan menangkap error "high demand" dari Google
     throw new Error(err?.error?.message || `Gemini error ${res.status}`)
   }
-  
   const data = await res.json()
-  const candidate = data.candidates?.[0]
-
-  // Jika terblokir karena indikasi kekerasan dalam game
-  if (candidate?.finishReason === 'SAFETY') {
-    throw new Error("Analisis diblokir oleh sistem Google. Coba crop gambar bagian skornya saja.")
-  }
-
-  const text = candidate?.content?.parts?.[0]?.text || ''
+  const text = data.candidates?.[0]?.content?.parts?.[0]?.text || ''
+  // bersihkan fence jika ada
   const clean = text.replace(/```json|```/gi, '').trim()
-
-  if (!clean) {
-    throw new Error("Server merespons kosong. Pastikan screenshot terlihat jelas.")
-  }
-
-  // [ENHANCEMENT]: Tangkap error jika AI mengembalikan JSON yang terpotong karena server sibuk
-  try {
-    return JSON.parse(clean)
-  } catch (err) {
-    console.error("Gagal parse JSON dari AI. Raw text:", text)
-    throw new Error("Server AI sedang tidak stabil dan mengembalikan data terpotong. Silakan coba lagi dalam beberapa saat.")
-  }
+  return JSON.parse(clean)
 }
 
 /* ═══════════════════════════════════════════════════════
-   Sub-komponen: Role Badge
+   Sub-komponen: Badge role
 ═══════════════════════════════════════════════════════ */
 function RoleBadge({ role }) {
-  if (!role) return null;
-  
-  const color = ROLE_COLOR[role] || 'var(--text-dim)';
-  
   return (
     <span style={{
-      fontSize: 10,
-      fontWeight: 600,
-      padding: '2px 8px',
-      borderRadius: 12,
-      color: color,
-      background: `${color}15`, // transparansi via hex
-      border: `1px solid ${color}30`,
-      whiteSpace: 'nowrap',
-      fontFamily: 'Syne, sans-serif'
-    }}>
-      {role}
-    </span>
-  );
+      fontSize: 10, fontWeight: 600, padding: '2px 7px', borderRadius: 4,
+      background: `${ROLE_COLOR[role] || 'var(--text-dim)'}22`,
+      color: ROLE_COLOR[role] || 'var(--text-dim)',
+      border: `1px solid ${ROLE_COLOR[role] || 'var(--text-dim)'}44`,
+      fontFamily: 'Syne, sans-serif', letterSpacing: '0.04em',
+    }}>{role}</span>
+  )
 }
 
 /* ═══════════════════════════════════════════════════════
@@ -301,7 +256,8 @@ function MatchInputModal({ lineup, teamId, userId, addToast, onClose, onSuccess 
     opponent: '', result: 'Win', score: '', tournament: '', round: '',
   })
   const [stats, setStats] = useState([])
-  const [saving, setSaving] = useState(false)
+  const [saving,     setSaving]     = useState(false)
+  const [savedMatch, setSavedMatch] = useState(null) // data yang sudah tersimpan
   const fileRef = useRef()
 
   const members = (lineup?.team_lineup_members || []).filter(m => m.users)
@@ -397,9 +353,11 @@ function MatchInputModal({ lineup, teamId, userId, addToast, onClose, onSuccess 
         target: `vs ${form.opponent} (${form.result})`,
       })
 
+      // Simpan data untuk ditampilkan di step done (tanpa auto close)
+      setSavedMatch({ match, form, stats: statsToInsert })
       setStep('done')
+      onSuccess?.()
       addToast({ message: `Match vs ${form.opponent} berhasil disimpan!`, type: 'success' })
-      setTimeout(() => { onSuccess?.(); onClose() }, 1800)
     } catch (err) {
       addToast({ message: 'Gagal simpan: ' + err.message, type: 'danger' })
     } finally {
@@ -655,16 +613,74 @@ function MatchInputModal({ lineup, teamId, userId, addToast, onClose, onSuccess 
             </div>
           )}
 
-          {/* STEP: done */}
-          {step === 'done' && (
-            <div style={{ textAlign: 'center', padding: '32px 0' }}>
-              <CheckCircle size={40} style={{ color: 'var(--green)', marginBottom: 12 }} />
-              <p style={{ fontSize: 15, fontWeight: 700, color: 'var(--text-primary)', fontFamily: 'Syne, sans-serif' }}>
-                Match berhasil disimpan!
-              </p>
-              <p style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 6 }}>
-                Menutup otomatis...
-              </p>
+          {/* STEP: done — tampilkan ringkasan data tersimpan */}
+          {step === 'done' && savedMatch && (
+            <div>
+              {/* Banner sukses */}
+              <div style={{ display:'flex', gap:10, padding:'12px 14px', borderRadius:10, marginBottom:16,
+                background:'rgba(16,185,129,0.07)', border:'1px solid rgba(16,185,129,0.2)' }}>
+                <CheckCircle size={16} style={{ color:'var(--green)', flexShrink:0, marginTop:1 }} />
+                <div>
+                  <p style={{ fontSize:13, fontWeight:700, color:'#065f46', fontFamily:'Syne,sans-serif' }}>Match berhasil disimpan!</p>
+                  <p style={{ fontSize:11, color:'#047857', marginTop:2 }}>Data di bawah sudah tersimpan. Kamu bisa edit langsung dari sini.</p>
+                </div>
+              </div>
+
+              {/* Ringkasan match */}
+              <div style={{ background:'#f9f8f7', borderRadius:10, padding:14, marginBottom:14, border:'1px solid rgba(0,0,0,0.07)' }}>
+                <p style={{ fontSize:10, fontWeight:700, textTransform:'uppercase', letterSpacing:'0.08em', color:'#a39e98', marginBottom:10, fontFamily:'Syne,sans-serif' }}>Ringkasan Match</p>
+                <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:8, fontSize:12 }}>
+                  {[
+                    ['Lawan', savedMatch.form.opponent],
+                    ['Hasil', savedMatch.form.result],
+                    ['Skor', savedMatch.form.score || '—'],
+                    ['Tournament', savedMatch.form.tournament || '—'],
+                    ['Babak', savedMatch.form.round || '—'],
+                  ].map(([l,v]) => (
+                    <div key={l}>
+                      <p style={{ fontSize:10, color:'#a39e98' }}>{l}</p>
+                      <p style={{ fontWeight:600, color: v==='Win'?'var(--green)':v==='Loss'?'var(--red)':'#1a1a1a', marginTop:1 }}>{v}</p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Stats pemain */}
+              {savedMatch.stats?.length > 0 && (
+                <div style={{ background:'#f9f8f7', borderRadius:10, padding:14, marginBottom:14, border:'1px solid rgba(0,0,0,0.07)' }}>
+                  <p style={{ fontSize:10, fontWeight:700, textTransform:'uppercase', letterSpacing:'0.08em', color:'#a39e98', marginBottom:10, fontFamily:'Syne,sans-serif' }}>Stats Pemain</p>
+                  <div style={{ display:'flex', flexDirection:'column', gap:6 }}>
+                    {savedMatch.stats.map((s, i) => {
+                      const member = members.find(m => m.users?.id === s.player_id)
+                      const kda = s.deaths === 0 ? (s.kills + s.assists) : ((s.kills + s.assists) / s.deaths)
+                      return (
+                        <div key={i} style={{ display:'flex', alignItems:'center', gap:10, padding:'7px 10px', borderRadius:7, background:'#fff', border:'1px solid rgba(0,0,0,0.07)' }}>
+                          <div style={{ flex:1, minWidth:0 }}>
+                            <p style={{ fontWeight:600, fontSize:12, color:'#1a1a1a' }}>{member?.users?.name || '—'}</p>
+                            <p style={{ fontSize:11, color:'#a39e98', marginTop:1 }}>{s.hero}</p>
+                          </div>
+                          <span style={{ fontFamily:'IBM Plex Mono,monospace', fontSize:11, color:'#1a1a1a' }}>{s.kills}/{s.deaths}/{s.assists}</span>
+                          <span style={{ fontFamily:'IBM Plex Mono,monospace', fontSize:11, fontWeight:700, color:'var(--red)' }}>{kda.toFixed(2)}</span>
+                          {s.mvp && <span style={{ fontSize:10, fontWeight:700, padding:'2px 6px', borderRadius:4, background:'rgba(245,158,11,0.15)', color:'#b45309' }}>MVP</span>}
+                        </div>
+                      )
+                    })}
+                  </div>
+                </div>
+              )}
+
+              {/* Aksi */}
+              <div style={{ display:'flex', gap:8 }}>
+                <button onClick={onClose}
+                  style={{ flex:1, padding:'9px 0', borderRadius:8, fontSize:12, fontWeight:600, background:'#f0efee', border:'1px solid rgba(0,0,0,0.1)', color:'#615d59', cursor:'pointer', fontFamily:'Syne,sans-serif' }}>
+                  Tutup
+                </button>
+                <button
+                  onClick={() => { onClose(); window.location.href = '/player/history' }}
+                  style={{ flex:2, padding:'9px 0', borderRadius:8, fontSize:12, fontWeight:700, background:'var(--brand)', border:'none', color:'#fff', cursor:'pointer', fontFamily:'Syne,sans-serif' }}>
+                  ✏️ Lihat & Edit di Match History
+                </button>
+              </div>
             </div>
           )}
         </div>
