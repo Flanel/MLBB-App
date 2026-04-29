@@ -8,7 +8,7 @@ import { useAuth } from '@/hooks/useAuth'
 import { useToast } from '@/hooks/useToast'
 import { User, Save, Shield, CheckCircle, Crown } from 'lucide-react'
 
-const LANE_OPTIONS = ['Jungle','Gold Lane','Exp Lane','Mid','Roam','Support','Analyst','Coach','Manager','Lainnya']
+const LANE_OPTIONS = ['Jungle','Gold Lane','Exp Lane','Mid','Roam']
 
 export default function ProfilePage() {
   const { user, role } = useAuth()
