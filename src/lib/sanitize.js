@@ -65,9 +65,11 @@ export function sanitizeText(value, maxLen = 500) {
   return v.substring(0, maxLen)
 }
 
-// Validasi token format (UUID v4 only)
 export function isValidToken(token) {
-  return /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(token)
+  if (typeof token !== 'string') return false
+  const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(token)
+  const isHex48 = /^[0-9a-f]{48}$/i.test(token)
+  return isUUID || isHex48
 }
 
 // Validasi email format
