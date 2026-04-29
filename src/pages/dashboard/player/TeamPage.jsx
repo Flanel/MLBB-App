@@ -133,6 +133,31 @@ Catatan penting:
 }
 
 /* ═══════════════════════════════════════════════════════
+   Sub-komponen: Role Badge
+═══════════════════════════════════════════════════════ */
+function RoleBadge({ role }) {
+  if (!role) return null;
+  
+  const color = ROLE_COLOR[role] || 'var(--text-dim)';
+  
+  return (
+    <span style={{
+      fontSize: 10,
+      fontWeight: 600,
+      padding: '2px 8px',
+      borderRadius: 12,
+      color: color,
+      background: `${color}15`, // transparansi via hex
+      border: `1px solid ${color}30`,
+      whiteSpace: 'nowrap',
+      fontFamily: 'Syne, sans-serif'
+    }}>
+      {role}
+    </span>
+  );
+}
+
+/* ═══════════════════════════════════════════════════════
    Sub-komponen: Kartu lineup
 ═══════════════════════════════════════════════════════ */
 function LineupCard({ lineup, isCaptain, currentUserId, onInputMatch }) {
