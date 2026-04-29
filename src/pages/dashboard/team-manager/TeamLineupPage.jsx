@@ -64,7 +64,7 @@ export default function TeamLineupPage() {
           .select('id, name, ign, lane, province, city, is_active, role')
           .eq('team_id', me.team_id)
           .eq('is_active', true)
-          .in('role', ['player','staff'])
+          .in('role', ['player','staff','team_manager'])
           .order('name'),
       ])
 
@@ -392,7 +392,12 @@ export default function TeamLineupPage() {
                       </div>
                       <div style={{ flex:1, minWidth:0 }}>
                         <p style={{ fontSize:13, fontWeight:500, color:'var(--text-primary)' }}>{p.name}{p.ign && p.ign!==p.name && <span style={{ fontSize:11, color:'var(--text-dim)', marginLeft:5, fontFamily:'monospace' }}>({p.ign})</span>}</p>
-                        <div style={{ display:'flex', gap:8, marginTop:2 }}>
+                        <div style={{ display:'flex', gap:8, marginTop:2, flexWrap:'wrap' }}>
+                          {p.role && p.role !== 'player' && (
+                            <span style={{ fontSize:9, fontWeight:600, padding:'1px 5px', borderRadius:'var(--radius-pill)', background: p.role==='team_manager'?'rgba(0,117,222,0.1)':'rgba(221,91,0,0.1)', color: p.role==='team_manager'?'var(--blue)':'var(--amber)' }}>
+                              {p.role==='team_manager'?'Manager':'Staff'}
+                            </span>
+                          )}
                           {p.lane && <span style={{ fontSize:10, color:'var(--text-dim)' }}>{p.lane}</span>}
                           {p.province && <span style={{ fontSize:10, color:'var(--text-dim)', display:'flex', alignItems:'center', gap:2 }}><MapPin size={8}/>{p.province}</span>}
                         </div>
