@@ -42,32 +42,13 @@ async function analyzeMatchImage(base64, mimeType = 'image/jpeg') {
   const apiKey = import.meta.env.VITE_GEMINI_API_KEY
   if (!apiKey) throw new Error('VITE_GEMINI_API_KEY belum diset di file .env')
 
+  // Prompt sekarang jauh lebih rapi karena struktur JSON diurus oleh responseSchema
   const prompt = `Kamu adalah asisten esports yang ahli membaca screenshot hasil match Mobile Legends: Bang Bang.
-
-Analisis gambar ini dan ekstrak informasi berikut dalam format JSON murni (tanpa markdown, tanpa backtick):
-{
-  "opponent": "nama tim lawan atau 'Unknown'",
-  "result": "Win atau Loss",
-  "score": "skor seperti '3-1' atau '2-0' jika terlihat, kosong jika tidak ada",
-  "tournament": "nama turnamen jika terlihat, kosong jika tidak ada",
-  "round": "babak seperti 'Final', 'Semi-Final', 'Group Stage' jika terlihat, kosong jika tidak ada",
-  "players": [
-    {
-      "ign": "in-game name pemain",
-      "hero": "nama hero yang dipakai",
-      "kills": 0,
-      "deaths": 0,
-      "assists": 0,
-      "mvp": false
-    }
-  ]
-}
-
+Analisis gambar ini dan ekstrak informasinya.
 Catatan penting:
-- result harus PERSIS "Win" atau "Loss" (kapital huruf pertama saja)
-- Jika tidak bisa membaca dengan yakin, isi dengan nilai default yang masuk akal
-- players array bisa kosong [] jika stats tidak terlihat
-- mvp: true hanya jika ada ikon MVP/bintang di sebelah pemain tersebut`
+- result harus PERSIS "Win" atau "Loss"
+- mvp: true hanya jika ada ikon MVP/bintang di sebelah pemain tersebut
+- score, tournament, round bisa dikosongkan jika tidak ada.`
 
   const res = await fetch(
     `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`,
@@ -81,7 +62,6 @@ Catatan penting:
             { inline_data: { mime_type: mimeType, data: base64 } },
           ],
         }],
-        // [ENHANCEMENT]: Menurunkan sensitivitas filter untuk istilah game (KDA)
         safetySettings: [
           { category: "HARM_CATEGORY_DANGEROUS_CONTENT", threshold: "BLOCK_NONE" },
           { category: "HARM_CATEGORY_HARASSMENT", threshold: "BLOCK_NONE" },
@@ -91,11 +71,37 @@ Catatan penting:
         generationConfig: { 
           temperature: 0.1, 
           maxOutputTokens: 1024,
-          responseMimeType: "application/json" 
+          responseMimeType: "application/json",
+          // [ENHANCEMENT]: Paksa AI mematuhi skema JSON secara absolut
+          responseSchema: {
+            type: "OBJECT",
+            properties: {
+              opponent: { type: "STRING" },
+              result: { type: "STRING" },
+              score: { type: "STRING" },
+              tournament: { type: "STRING" },
+              round: { type: "STRING" },
+              players: {
+                type: "ARRAY",
+                items: {
+                  type: "OBJECT",
+                  properties: {
+                    ign: { type: "STRING" },
+                    hero: { type: "STRING" },
+                    kills: { type: "INTEGER" },
+                    deaths: { type: "INTEGER" },
+                    assists: { type: "INTEGER" },
+                    mvp: { type: "BOOLEAN" }
+                  }
+                }
+              }
+            }
+          }
         },
       }),
     }
   )
+  
   if (!res.ok) {
     const err = await res.json()
     throw new Error(err?.error?.message || `Gemini error ${res.status}`)
@@ -104,17 +110,13 @@ Catatan penting:
   const data = await res.json()
   const candidate = data.candidates?.[0]
 
-  // [ENHANCEMENT]: Deteksi jika gambar tetap ditolak oleh sistem keamanan Google
   if (candidate?.finishReason === 'SAFETY') {
     throw new Error("Analisis diblokir oleh Safety Filter Google. Coba gambar lain atau crop bagian yang tidak perlu.")
   }
 
   const text = candidate?.content?.parts?.[0]?.text || ''
-  
-  // bersihkan fence jika ada
   const clean = text.replace(/```json|```/gi, '').trim()
 
-  // [ENHANCEMENT]: Validasi agar JSON.parse tidak crash jika teks kosong
   if (!clean) {
     throw new Error("Gagal mengekstrak data dari gambar. Pastikan screenshot terlihat jelas.")
   }
