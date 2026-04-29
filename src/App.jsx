@@ -31,6 +31,7 @@ import PlayerDashboard    from '@/pages/dashboard/player/DashboardPage'
 import HistoryPage        from '@/pages/dashboard/player/HistoryPage'
 import PlayerTournaments  from '@/pages/dashboard/player/TournamentsPage'
 import PlayerSchedulePage from '@/pages/dashboard/player/SchedulePage'
+import PlayerTeamPage     from '@/pages/dashboard/player/TeamPage'
 
 const SA  = ['super_admin']
 const TMS = ['super_admin','team_manager','staff']
@@ -79,6 +80,7 @@ export default function App() {
         <Route path="/player/history"     element={<ProtectedRoute allowedRoles={ALL}><HistoryPage /></ProtectedRoute>} />
         <Route path="/player/tournaments" element={<ProtectedRoute allowedRoles={ALL}><PlayerTournaments /></ProtectedRoute>} />
         <Route path="/player/schedule"    element={<ProtectedRoute allowedRoles={ALL}><PlayerSchedulePage /></ProtectedRoute>} />
+        <Route path="/player/team"        element={<ProtectedRoute allowedRoles={ALL}><PlayerTeamPage /></ProtectedRoute>} />
 
         <Route path="*" element={<Navigate to="/dashboard" replace />} />
       </Routes>

@@ -78,6 +78,7 @@ const navConfig = {
       { to:'/player/tournaments', label:'Tournaments',   icon:Trophy },
     ]},
     { group:'Team', items:[
+      { to:'/player/team',     label:'Tim',      icon:Flag     },
       { to:'/player/schedule', label:'Schedule', icon:Calendar },
     ]},
     { group:'Account', items:[
