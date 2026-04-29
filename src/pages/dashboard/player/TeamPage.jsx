@@ -84,7 +84,7 @@ Catatan penting:
         generationConfig: { 
           temperature: 0.1, 
           maxOutputTokens: 1024,
-          responseMimeType: "application/json" // <--- Tambahkan properti ini
+          responseMimeType: "application/json"
         },
       }),
     }
