@@ -1,5 +1,4 @@
-// TeamPage.jsx — Player view: info tim + captain input match via foto (Gemini Flash)
-// Gemini Vision API gratis via Google AI Studio → VITE_GEMINI_API_KEY
+
 
 import { useState, useEffect, useRef } from 'react'
 import DashboardLayout from '@/components/layout/DashboardLayout'
@@ -71,7 +70,7 @@ Catatan penting:
 - mvp: true hanya jika ada ikon MVP/bintang di sebelah pemain tersebut`
 
   const res = await fetch(
-    `https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash-latest:generateContent?key=${apiKey}`,
+    `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`,
     {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
