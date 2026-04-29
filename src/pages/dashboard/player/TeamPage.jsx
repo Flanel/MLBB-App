@@ -158,7 +158,7 @@ function LineupCard({ lineup, isCaptain, currentUserId, onInputMatch }) {
 
       {/* member list */}
       {open && (
-        <div style={{ borderTop: '1px solid var(--border-1)', padding: '14px 18px' }}>
+        <div style={{ borderTop: '1px solid rgba(0,0,0,0.09)', padding: '14px 18px' }}>
           {members.length === 0 ? (
             <p style={{ fontSize: 12, color: 'var(--text-dim)', textAlign: 'center', padding: '8px 0' }}>
               Belum ada anggota.
@@ -172,14 +172,14 @@ function LineupCard({ lineup, isCaptain, currentUserId, onInputMatch }) {
                   <div key={m.id} style={{
                     display: 'flex', alignItems: 'center', gap: 10,
                     padding: '8px 12px', borderRadius: 8,
-                    background: isMe ? 'rgba(225,29,72,0.04)' : 'var(--bg-surface)',
-                    border: isMe ? '1px solid rgba(225,29,72,0.15)' : '1px solid var(--border-1)',
+                    background: isMe ? 'rgba(225,29,72,0.04)' : 'var(--canvas-alt)',
+                    border: isMe ? '1px solid rgba(225,29,72,0.15)' : '1px solid rgba(0,0,0,0.09)',
                   }}>
                     {/* avatar */}
                     <div style={{
                       width: 32, height: 32, borderRadius: 8, flexShrink: 0,
                       background: m.is_captain ? 'rgba(245,158,11,0.15)' : 'rgba(255,255,255,0.04)',
-                      border: m.is_captain ? '1px solid rgba(245,158,11,0.3)' : '1px solid var(--border-1)',
+                      border: m.is_captain ? '1px solid rgba(245,158,11,0.3)' : '1px solid rgba(0,0,0,0.09)',
                       display: 'flex', alignItems: 'center', justifyContent: 'center',
                       fontSize: 12, fontWeight: 700,
                       color: m.is_captain ? '#f59e0b' : 'var(--text-muted)',
@@ -364,8 +364,8 @@ function MatchInputModal({ lineup, teamId, userId, addToast, onClose, onSuccess 
 
   const inputStyle = {
     width: '100%', padding: '7px 10px', fontSize: 12, borderRadius: 7,
-    background: 'var(--bg-surface)', border: '1px solid var(--border-1)',
-    color: 'var(--text-primary)', outline: 'none',
+    background: '#f6f5f4', border: '1px solid rgba(0,0,0,0.12)',
+    color: '#1a1a1a', outline: 'none',
   }
 
   return (
@@ -374,14 +374,15 @@ function MatchInputModal({ lineup, teamId, userId, addToast, onClose, onSuccess 
       display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16,
     }}>
       <div style={{
-        background: 'var(--bg-card)', border: '1px solid var(--border-1)',
+        background: '#ffffff', border: '1px solid rgba(0,0,0,0.12)',
         borderRadius: 16, width: '100%', maxWidth: 560,
         maxHeight: '90vh', overflow: 'hidden', display: 'flex', flexDirection: 'column',
+        boxShadow: '0 24px 64px rgba(0,0,0,0.22), 0 8px 24px rgba(0,0,0,0.14)',
       }}>
         {/* Header */}
         <div style={{
           display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-          padding: '16px 20px', borderBottom: '1px solid var(--border-1)',
+          padding: '16px 20px', borderBottom: '1px solid rgba(0,0,0,0.09)',
         }}>
           <div>
             <p style={{ fontSize: 14, fontWeight: 700, color: 'var(--text-primary)', fontFamily: 'Syne, sans-serif' }}>
@@ -410,9 +411,9 @@ function MatchInputModal({ lineup, teamId, userId, addToast, onClose, onSuccess 
                 onDragOver={e => e.preventDefault()}
                 onDrop={e => { e.preventDefault(); handleFile(e.dataTransfer.files[0]) }}
                 style={{
-                  border: `2px dashed ${imageFile ? 'rgba(225,29,72,0.4)' : 'var(--border-1)'}`,
+                  border: `2px dashed ${imageFile ? 'rgba(225,29,72,0.4)' : 'rgba(0,0,0,0.18)'}`,
                   borderRadius: 12, padding: 20, textAlign: 'center', cursor: 'pointer',
-                  background: imageFile ? 'rgba(225,29,72,0.03)' : 'var(--bg-surface)',
+                  background: imageFile ? 'rgba(225,29,72,0.03)' : '#f9f8f7',
                   marginBottom: 14, transition: 'all 0.15s',
                 }}
               >
@@ -467,7 +468,7 @@ function MatchInputModal({ lineup, teamId, userId, addToast, onClose, onSuccess 
                   disabled={analyzing}
                   style={{
                     width: '100%', padding: '10px 16px', borderRadius: 8,
-                    background: analyzing ? 'var(--bg-surface)' : 'var(--brand)',
+                    background: analyzing ? '#f0efee' : 'var(--brand)',
                     border: 'none', color: '#fff', fontSize: 13, fontWeight: 700,
                     cursor: analyzing ? 'not-allowed' : 'pointer',
                     display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
@@ -588,8 +589,8 @@ function MatchInputModal({ lineup, teamId, userId, addToast, onClose, onSuccess 
                   onClick={() => { setStep('upload'); setAiResult(null) }}
                   style={{
                     flex: 1, padding: '9px 16px', borderRadius: 8, fontSize: 12, fontWeight: 600,
-                    background: 'var(--bg-surface)', border: '1px solid var(--border-1)',
-                    color: 'var(--text-muted)', cursor: 'pointer', fontFamily: 'Syne, sans-serif',
+                    background: '#f0efee', border: '1px solid rgba(0,0,0,0.12)',
+                    color: '#615d59', cursor: 'pointer', fontFamily: 'Syne, sans-serif',
                   }}>
                   Ganti Foto
                 </button>
@@ -598,8 +599,8 @@ function MatchInputModal({ lineup, teamId, userId, addToast, onClose, onSuccess 
                   disabled={saving}
                   style={{
                     flex: 2, padding: '9px 16px', borderRadius: 8, fontSize: 12, fontWeight: 700,
-                    background: saving ? 'var(--bg-surface)' : 'var(--brand)',
-                    border: 'none', color: '#fff', cursor: saving ? 'not-allowed' : 'pointer',
+                    background: saving ? '#f0efee' : 'var(--brand)',
+                    border: saving ? '1px solid rgba(0,0,0,0.09)' : 'none', color: saving ? '#615d59' : '#fff', cursor: saving ? 'not-allowed' : 'pointer',
                     display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
                     fontFamily: 'Syne, sans-serif',
                   }}>
