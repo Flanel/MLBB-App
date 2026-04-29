@@ -1,97 +1,60 @@
-import { useState } from 'react'
+// TopUpPage.jsx — Redirect ke gamevaulto.com
 import DashboardLayout from '@/components/layout/DashboardLayout'
-import { ExternalLink, Zap, ShieldCheck, ArrowRight } from 'lucide-react'
+import { ExternalLink, Zap, Shield, Clock } from 'lucide-react'
 
-const TOPUP_URL = 'https://gamevaulto.com'
+const TARGET_URL = 'https://gamevaulto.com'
 
 export default function TopUpPage() {
-  const [clicked, setClicked] = useState(false)
-
-  function handleTopUp() {
-    setClicked(true)
-    window.open(TOPUP_URL, '_blank', 'noopener,noreferrer')
-  }
-
   return (
     <DashboardLayout title="Top Up">
-      <div style={{ maxWidth: 480, margin: '0 auto', paddingTop: 12 }}>
+      <div style={{ maxWidth:520, margin:'0 auto', paddingTop:24 }}>
+        <h1 className="page-heading" style={{ marginBottom:6 }}>Top Up Diamond & Koin</h1>
+        <p className="page-subheading" style={{ marginBottom:32 }}>
+          Isi ulang diamond atau koin game favorit kamu dengan cepat dan aman.
+        </p>
 
-        {/* Hero card */}
-        <div className="card" style={{
-          borderTop: '2px solid var(--brand)',
-          textAlign: 'center',
-          padding: '36px 32px',
-          position: 'relative',
-          overflow: 'hidden',
-        }}>
-          {/* Background glow */}
-          <div style={{
-            position: 'absolute', top: -40, left: '50%', transform: 'translateX(-50%)',
-            width: 200, height: 200,
-            background: 'radial-gradient(circle, rgba(45,212,191,0.06) 0%, transparent 70%)',
-            pointerEvents: 'none',
-          }} />
-
-          <div style={{
-            width: 52, height: 52, borderRadius: 'var(--r-md)',
-            background: 'var(--brand-glow)', border: '1px solid var(--brand-border)',
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            margin: '0 auto 20px',
-          }}>
-            <Zap size={22} style={{ color: 'var(--brand)' }} />
+        {/* Main card */}
+        <div className="card" style={{ textAlign:'center', padding:'40px 32px' }}>
+          {/* Icon */}
+          <div style={{ width:64, height:64, borderRadius:'var(--radius-xl)', background:'var(--brand-subtle)', border:'var(--brand-border)', display:'flex', alignItems:'center', justifyContent:'center', margin:'0 auto 20px' }}>
+            <Zap size={28} style={{ color:'var(--brand)' }}/>
           </div>
 
-          <p style={{ fontFamily:'Syne,sans-serif', fontSize:18, fontWeight:700, color:'var(--text-primary)', letterSpacing:'-0.4px', marginBottom:8 }}>
-            Top Up Diamond
-          </p>
-          <p style={{ fontSize:13, color:'var(--text-muted)', lineHeight:1.6, marginBottom:28, maxWidth:320, margin:'0 auto 28px' }}>
-            Klik tombol di bawah untuk diarahkan ke platform top up resmi NXK Esports.
+          <h2 style={{ fontSize:20, fontWeight:700, color:'var(--text-primary)', letterSpacing:'-0.25px', marginBottom:8 }}>
+            Game Vaulto
+          </h2>
+          <p style={{ fontSize:14, color:'var(--text-muted)', lineHeight:1.6, marginBottom:28, maxWidth:340, margin:'0 auto 28px' }}>
+            Kami bermitra dengan <strong style={{ color:'var(--text-primary)' }}>gamevaulto.com</strong> untuk layanan top up
+            game yang cepat, aman, dan terpercaya.
           </p>
 
           <button
-            onClick={handleTopUp}
-            style={{
-              display: 'inline-flex', alignItems: 'center', gap: 8,
-              padding: '11px 24px', borderRadius: 'var(--r-sm)',
-              background: clicked ? 'var(--bg-elevated)' : 'var(--brand)',
-              border: clicked ? '1px solid var(--border-2)' : '1px solid var(--brand-dim)',
-              color: clicked ? 'var(--text-secondary)' : '#041a17',
-              fontSize: 13, fontWeight: 700,
-              fontFamily: 'Syne,sans-serif',
-              cursor: 'pointer',
-              transition: 'all 0.15s ease',
-              letterSpacing: '-0.1px',
-            }}
-            onMouseEnter={e => { if (!clicked) { e.currentTarget.style.background='var(--brand-hover)'; e.currentTarget.style.boxShadow='0 0 20px rgba(45,212,191,0.18)' } }}
-            onMouseLeave={e => { e.currentTarget.style.background = clicked ? 'var(--bg-elevated)' : 'var(--brand)'; e.currentTarget.style.boxShadow='none' }}
-          >
-            <ExternalLink size={14} />
-            {clicked ? 'Buka Lagi' : 'Pergi ke GameVaulto'}
-            <ArrowRight size={14} />
+            onClick={() => window.open(TARGET_URL, '_blank', 'noopener,noreferrer')}
+            className="btn btn-primary"
+            style={{ padding:'10px 28px', fontSize:15, fontWeight:600, gap:8, margin:'0 auto', display:'inline-flex' }}>
+            <ExternalLink size={15}/>
+            Buka gamevaulto.com
           </button>
 
-          {clicked && (
-            <p style={{ fontSize:11, color:'var(--text-dim)', marginTop:12 }}>
-              ✓ Halaman sudah dibuka di tab baru.
-            </p>
-          )}
-        </div>
-
-        {/* Info note */}
-        <div style={{
-          marginTop: 14,
-          display: 'flex', alignItems: 'center', gap: 10,
-          padding: '10px 14px',
-          background: 'var(--bg-surface)',
-          border: '1px solid var(--border-1)',
-          borderRadius: 'var(--r-md)',
-        }}>
-          <ShieldCheck size={13} style={{ color:'var(--brand)', flexShrink:0 }} />
-          <p style={{ fontSize:11.5, color:'var(--text-muted)', lineHeight:1.5 }}>
-            Anda akan diarahkan ke <strong style={{ color:'var(--text-secondary)' }}>gamevaulto.com</strong> — platform top up resmi yang bekerja sama dengan NXK Esports.
+          <p style={{ fontSize:11, color:'var(--text-dim)', marginTop:16 }}>
+            Kamu akan diarahkan ke website gamevaulto.com di tab baru.
           </p>
         </div>
 
+        {/* Tips */}
+        <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr 1fr', gap:10, marginTop:16 }}>
+          {[
+            { icon:Shield, label:'Aman & Terpercaya', desc:'Website mitra resmi' },
+            { icon:Clock,  label:'Proses Cepat',      desc:'Masuk dalam menit' },
+            { icon:Zap,    label:'Semua Game',         desc:'ML, FF, PUBG, & lainnya' },
+          ].map(({ icon:Icon, label, desc }) => (
+            <div key={label} className="card-inset" style={{ textAlign:'center', padding:'14px 10px' }}>
+              <Icon size={18} style={{ color:'var(--text-dim)', margin:'0 auto 8px' }}/>
+              <p style={{ fontSize:12, fontWeight:600, color:'var(--text-secondary)', marginBottom:2 }}>{label}</p>
+              <p style={{ fontSize:11, color:'var(--text-dim)' }}>{desc}</p>
+            </div>
+          ))}
+        </div>
       </div>
     </DashboardLayout>
   )

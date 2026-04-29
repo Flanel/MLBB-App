@@ -7,7 +7,6 @@ import InviteRegisterPage  from '@/pages/register/InviteRegisterPage'
 import ProfilePage         from '@/pages/profile/ProfilePage'
 import TopUpPage           from '@/pages/topup/TopUpPage'
 
-// Super Admin
 import SAOverviewPage  from '@/pages/dashboard/super-admin/OverviewPage'
 import TeamsPage       from '@/pages/dashboard/super-admin/TeamsPage'
 import UsersPage       from '@/pages/dashboard/super-admin/UsersPage'
@@ -17,19 +16,17 @@ import SAInvitePage    from '@/pages/dashboard/super-admin/InvitePage'
 import SAApprovalsPage from '@/pages/dashboard/super-admin/ApprovalsPage'
 import TeamDataPage    from '@/pages/dashboard/super-admin/TeamDataPage'
 
-// Team Manager
-import TmDashboard      from '@/pages/dashboard/team-manager/DashboardPage'
-import RosterPage       from '@/pages/dashboard/team-manager/RosterPage'
-import TeamLineupPage   from '@/pages/dashboard/team-manager/TeamLineupPage'
-import MatchesPage      from '@/pages/dashboard/team-manager/MatchesPage'
-import TmTournaments    from '@/pages/dashboard/team-manager/TournamentsPage'
-import AnalyticsPage    from '@/pages/dashboard/team-manager/AnalyticsPage'
-import WinRatePage      from '@/pages/dashboard/team-manager/WinRatePage'
-import TmSchedulePage   from '@/pages/dashboard/team-manager/SchedulePage'
-import TmInvitePage     from '@/pages/dashboard/team-manager/InvitePage'
-import TmApprovalsPage  from '@/pages/dashboard/team-manager/ApprovalsPage'
+import TmDashboard    from '@/pages/dashboard/team-manager/DashboardPage'
+import RosterPage     from '@/pages/dashboard/team-manager/RosterPage'
+import TeamLineupPage from '@/pages/dashboard/team-manager/TeamLineupPage'
+import MatchesPage    from '@/pages/dashboard/team-manager/MatchesPage'
+import TmTournaments  from '@/pages/dashboard/team-manager/TournamentsPage'
+import AnalyticsPage  from '@/pages/dashboard/team-manager/AnalyticsPage'
+import WinRatePage    from '@/pages/dashboard/team-manager/WinRatePage'
+import TmSchedulePage from '@/pages/dashboard/team-manager/SchedulePage'
+import TmInvitePage   from '@/pages/dashboard/team-manager/InvitePage'
+import TmApprovalsPage from '@/pages/dashboard/team-manager/ApprovalsPage'
 
-// Player
 import PlayerDashboard    from '@/pages/dashboard/player/DashboardPage'
 import HistoryPage        from '@/pages/dashboard/player/HistoryPage'
 import PlayerTournaments  from '@/pages/dashboard/player/TournamentsPage'
@@ -53,14 +50,11 @@ export default function App() {
       <Routes>
         <Route path="/login"           element={<LoginPage />} />
         <Route path="/register/:token" element={<InviteRegisterPage />} />
-
         <Route path="/"          element={<Navigate to="/dashboard" replace />} />
         <Route path="/dashboard" element={<ProtectedRoute allowedRoles={ALL}><DashboardRedirect /></ProtectedRoute>} />
+        <Route path="/profile"   element={<ProtectedRoute allowedRoles={ALL}><ProfilePage /></ProtectedRoute>} />
+        <Route path="/topup"     element={<ProtectedRoute allowedRoles={ALL}><TopUpPage /></ProtectedRoute>} />
 
-        <Route path="/profile" element={<ProtectedRoute allowedRoles={ALL}><ProfilePage /></ProtectedRoute>} />
-        <Route path="/topup"   element={<ProtectedRoute allowedRoles={ALL}><TopUpPage /></ProtectedRoute>} />
-
-        {/* Super Admin */}
         <Route path="/super-admin"                    element={<ProtectedRoute allowedRoles={SA}><SAOverviewPage /></ProtectedRoute>} />
         <Route path="/super-admin/teams"              element={<ProtectedRoute allowedRoles={SA}><TeamsPage /></ProtectedRoute>} />
         <Route path="/super-admin/users"              element={<ProtectedRoute allowedRoles={SA}><UsersPage /></ProtectedRoute>} />
@@ -70,19 +64,17 @@ export default function App() {
         <Route path="/super-admin/approvals"          element={<ProtectedRoute allowedRoles={SA}><SAApprovalsPage /></ProtectedRoute>} />
         <Route path="/super-admin/teams/:teamId/data" element={<ProtectedRoute allowedRoles={SA}><TeamDataPage /></ProtectedRoute>} />
 
-        {/* Team Manager + Staff */}
-        <Route path="/team-manager"               element={<ProtectedRoute allowedRoles={TMS}><TmDashboard /></ProtectedRoute>} />
-        <Route path="/team-manager/roster"        element={<ProtectedRoute allowedRoles={TMS}><RosterPage /></ProtectedRoute>} />
-        <Route path="/team-manager/team-lineup"   element={<ProtectedRoute allowedRoles={TMS}><TeamLineupPage /></ProtectedRoute>} />
-        <Route path="/team-manager/matches"       element={<ProtectedRoute allowedRoles={TMS}><MatchesPage /></ProtectedRoute>} />
-        <Route path="/team-manager/tournaments"   element={<ProtectedRoute allowedRoles={TMS}><TmTournaments /></ProtectedRoute>} />
-        <Route path="/team-manager/analytics"     element={<ProtectedRoute allowedRoles={TMS}><AnalyticsPage /></ProtectedRoute>} />
-        <Route path="/team-manager/winrate"       element={<ProtectedRoute allowedRoles={TMS}><WinRatePage /></ProtectedRoute>} />
-        <Route path="/team-manager/schedule"      element={<ProtectedRoute allowedRoles={TMS}><TmSchedulePage /></ProtectedRoute>} />
-        <Route path="/team-manager/invite"        element={<ProtectedRoute allowedRoles={TMS}><TmInvitePage /></ProtectedRoute>} />
-        <Route path="/team-manager/approvals"     element={<ProtectedRoute allowedRoles={TM}><TmApprovalsPage /></ProtectedRoute>} />
+        <Route path="/team-manager"              element={<ProtectedRoute allowedRoles={TMS}><TmDashboard /></ProtectedRoute>} />
+        <Route path="/team-manager/roster"       element={<ProtectedRoute allowedRoles={TMS}><RosterPage /></ProtectedRoute>} />
+        <Route path="/team-manager/team-lineup"  element={<ProtectedRoute allowedRoles={TMS}><TeamLineupPage /></ProtectedRoute>} />
+        <Route path="/team-manager/matches"      element={<ProtectedRoute allowedRoles={TMS}><MatchesPage /></ProtectedRoute>} />
+        <Route path="/team-manager/tournaments"  element={<ProtectedRoute allowedRoles={TMS}><TmTournaments /></ProtectedRoute>} />
+        <Route path="/team-manager/analytics"    element={<ProtectedRoute allowedRoles={TMS}><AnalyticsPage /></ProtectedRoute>} />
+        <Route path="/team-manager/winrate"      element={<ProtectedRoute allowedRoles={TMS}><WinRatePage /></ProtectedRoute>} />
+        <Route path="/team-manager/schedule"     element={<ProtectedRoute allowedRoles={TMS}><TmSchedulePage /></ProtectedRoute>} />
+        <Route path="/team-manager/invite"       element={<ProtectedRoute allowedRoles={TMS}><TmInvitePage /></ProtectedRoute>} />
+        <Route path="/team-manager/approvals"    element={<ProtectedRoute allowedRoles={TM}><TmApprovalsPage /></ProtectedRoute>} />
 
-        {/* Player */}
         <Route path="/player"             element={<ProtectedRoute allowedRoles={ALL}><PlayerDashboard /></ProtectedRoute>} />
         <Route path="/player/history"     element={<ProtectedRoute allowedRoles={ALL}><HistoryPage /></ProtectedRoute>} />
         <Route path="/player/tournaments" element={<ProtectedRoute allowedRoles={ALL}><PlayerTournaments /></ProtectedRoute>} />
