@@ -9,7 +9,8 @@ import { useToast } from '@/hooks/useToast'
 import {
   Users, Crown, Flag, MapPin, Swords,
   Upload, Loader2, CheckCircle, Image, X,
-  Shield, Star, AlertCircle, ChevronDown, ChevronUp, Zap
+  Shield, Star, AlertCircle, ChevronDown, ChevronUp, Zap,
+  Pencil, History, Lock
 } from 'lucide-react'
 
 /* ─── konstanta warna ─── */
@@ -722,6 +723,265 @@ function MatchInputModal({ lineup, teamId, userId, addToast, onClose, onSuccess 
 }
 
 /* ═══════════════════════════════════════════════════════
+   Sub-komponen: Modal Detail/Edit Match (dari riwayat)
+   - Semua bisa lihat
+   - Hanya kapten yang bisa edit
+═══════════════════════════════════════════════════════ */
+function MatchDetailModal({ match, isCaptain, userId, addToast, onClose, onSaved }) {
+  const [editing, setEditing]   = useState(false)
+  const [saving,  setSaving]    = useState(false)
+  const [form, setForm] = useState({
+    opponent:   match.opponent   || '',
+    result:     match.result     || 'Win',
+    score:      match.score      || '',
+    tournament: match.tournament || '',
+    round:      match.round      || '',
+  })
+
+  // Stats semua pemain di match ini
+  const [playerStats, setPlayerStats] = useState([])
+  const [loadingStats, setLoadingStats] = useState(true)
+
+  useEffect(() => {
+    async function loadStats() {
+      const { data } = await supabase
+        .from('match_player_stats')
+        .select('id, hero, kills, deaths, assists, mvp, player_id, users(name, ign)')
+        .eq('match_id', match.id)
+      setPlayerStats(data || [])
+      setLoadingStats(false)
+    }
+    loadStats()
+  }, [match.id])
+
+  function updateStat(idx, field, value) {
+    setPlayerStats(prev => prev.map((s, i) => i === idx ? { ...s, [field]: value } : s))
+  }
+
+  async function handleSave() {
+    setSaving(true)
+    try {
+      // Update match
+      const { error: me } = await supabase.from('matches').update({
+        opponent:   form.opponent,
+        result:     form.result,
+        score:      form.score      || null,
+        tournament: form.tournament || null,
+        round:      form.round      || null,
+      }).eq('id', match.id)
+      if (me) throw new Error(me.message)
+
+      // Update tiap stat
+      for (const s of playerStats) {
+        await supabase.from('match_player_stats').update({
+          hero:    s.hero,
+          kills:   parseInt(s.kills)   || 0,
+          deaths:  parseInt(s.deaths)  || 0,
+          assists: parseInt(s.assists) || 0,
+          mvp:     s.mvp,
+        }).eq('id', s.id)
+      }
+
+      addToast({ message: 'Match berhasil diupdate!', type: 'success' })
+      setEditing(false)
+      onSaved?.()
+    } catch (err) {
+      addToast({ message: 'Gagal simpan: ' + err.message, type: 'danger' })
+    } finally { setSaving(false) }
+  }
+
+  const inp = {
+    width: '100%', padding: '7px 10px', fontSize: 12, borderRadius: 7,
+    background: '#f6f5f4', border: '1px solid rgba(0,0,0,0.12)', color: '#1a1a1a', outline: 'none',
+  }
+
+  return (
+    <div style={{ position:'fixed', inset:0, background:'rgba(0,0,0,0.55)', zIndex:9999, display:'flex', alignItems:'center', justifyContent:'center', padding:16 }}>
+      <div style={{ background:'#fff', borderRadius:16, width:'100%', maxWidth:540, maxHeight:'90vh', overflow:'hidden', display:'flex', flexDirection:'column', boxShadow:'0 24px 64px rgba(0,0,0,0.22)' }}>
+
+        {/* Header */}
+        <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', padding:'15px 20px', borderBottom:'1px solid rgba(0,0,0,0.08)' }}>
+          <div>
+            <p style={{ fontSize:14, fontWeight:700, color:'#1a1a1a', fontFamily:'Syne,sans-serif' }}>
+              {editing ? '✏️ Edit Match' : '⚔️ Detail Match'}
+            </p>
+            <p style={{ fontSize:11, color:'#a39e98', marginTop:2 }}>
+              vs <strong>{match.opponent}</strong> · {match.date}
+            </p>
+          </div>
+          <div style={{ display:'flex', alignItems:'center', gap:8 }}>
+            {/* Tombol edit — hanya kapten */}
+            {isCaptain && !editing && (
+              <button onClick={() => setEditing(true)}
+                style={{ display:'flex', alignItems:'center', gap:5, padding:'5px 11px', borderRadius:7, fontSize:11, fontWeight:600, background:'rgba(0,117,222,0.08)', border:'1px solid rgba(0,117,222,0.2)', color:'var(--blue)', cursor:'pointer', fontFamily:'Syne,sans-serif' }}>
+                <Pencil size={12}/> Edit
+              </button>
+            )}
+            {!isCaptain && (
+              <div style={{ display:'flex', alignItems:'center', gap:4, padding:'4px 10px', borderRadius:6, background:'rgba(0,0,0,0.04)', border:'1px solid rgba(0,0,0,0.08)' }}>
+                <Lock size={10} style={{ color:'#a39e98' }}/>
+                <span style={{ fontSize:10, color:'#a39e98' }}>View only</span>
+              </div>
+            )}
+            <button onClick={onClose} style={{ background:'transparent', border:'none', cursor:'pointer', color:'#a39e98', padding:4 }}>
+              <X size={16}/>
+            </button>
+          </div>
+        </div>
+
+        <div style={{ overflowY:'auto', flex:1, padding:18 }}>
+
+          {/* Detail match */}
+          <div style={{ background:'#f9f8f7', borderRadius:10, padding:14, marginBottom:14, border:'1px solid rgba(0,0,0,0.06)' }}>
+            <p style={{ fontSize:10, fontWeight:700, textTransform:'uppercase', letterSpacing:'0.08em', color:'#a39e98', marginBottom:12, fontFamily:'Syne,sans-serif' }}>Detail Match</p>
+            {editing ? (
+              <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:10 }}>
+                <div style={{ gridColumn:'1/-1' }}>
+                  <label style={{ fontSize:11, color:'#615d59', display:'block', marginBottom:3 }}>Nama Lawan *</label>
+                  <input style={inp} value={form.opponent} onChange={e => setForm(f=>({...f,opponent:e.target.value}))} />
+                </div>
+                <div>
+                  <label style={{ fontSize:11, color:'#615d59', display:'block', marginBottom:3 }}>Hasil</label>
+                  <select style={inp} value={form.result} onChange={e => setForm(f=>({...f,result:e.target.value}))}>
+                    <option value="Win">Win</option><option value="Loss">Loss</option>
+                  </select>
+                </div>
+                <div>
+                  <label style={{ fontSize:11, color:'#615d59', display:'block', marginBottom:3 }}>Skor</label>
+                  <input style={inp} value={form.score} onChange={e => setForm(f=>({...f,score:e.target.value}))} placeholder="3-1" />
+                </div>
+                <div>
+                  <label style={{ fontSize:11, color:'#615d59', display:'block', marginBottom:3 }}>Tournament</label>
+                  <input style={inp} value={form.tournament} onChange={e => setForm(f=>({...f,tournament:e.target.value}))} />
+                </div>
+                <div>
+                  <label style={{ fontSize:11, color:'#615d59', display:'block', marginBottom:3 }}>Babak</label>
+                  <input style={inp} value={form.round} onChange={e => setForm(f=>({...f,round:e.target.value}))} />
+                </div>
+              </div>
+            ) : (
+              <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:10 }}>
+                {[
+                  ['Lawan',      match.opponent || '—'],
+                  ['Hasil',      match.result],
+                  ['Skor',       match.score || '—'],
+                  ['Tournament', match.tournament || '—'],
+                  ['Babak',      match.round || '—'],
+                  ['Tanggal',    match.date || '—'],
+                ].map(([l,v]) => (
+                  <div key={l}>
+                    <p style={{ fontSize:10, color:'#a39e98', marginBottom:2 }}>{l}</p>
+                    <p style={{ fontSize:13, fontWeight:600,
+                      color: v==='Win'?'#059669':v==='Loss'?'var(--brand)':'#1a1a1a' }}>{v}</p>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Stats pemain */}
+          <div style={{ background:'#f9f8f7', borderRadius:10, padding:14, border:'1px solid rgba(0,0,0,0.06)' }}>
+            <p style={{ fontSize:10, fontWeight:700, textTransform:'uppercase', letterSpacing:'0.08em', color:'#a39e98', marginBottom:12, fontFamily:'Syne,sans-serif' }}>Stats Pemain</p>
+            {loadingStats ? (
+              <p style={{ fontSize:12, color:'#a39e98', textAlign:'center', padding:'12px 0' }}>Memuat...</p>
+            ) : playerStats.length === 0 ? (
+              <p style={{ fontSize:12, color:'#a39e98', textAlign:'center', padding:'12px 0' }}>Belum ada stats pemain.</p>
+            ) : editing ? (
+              /* Mode edit — tabel dengan input */
+              <div style={{ overflowX:'auto' }}>
+                <table style={{ width:'100%', borderCollapse:'collapse', fontSize:12 }}>
+                  <thead>
+                    <tr>
+                      {['Pemain','Hero','K','D','A','MVP'].map(h => (
+                        <th key={h} className="table-th" style={{ padding:'6px 8px', fontSize:10 }}>{h}</th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {playerStats.map((s, i) => (
+                      <tr key={s.id}>
+                        <td className="table-td" style={{ padding:'6px 8px' }}>
+                          <p style={{ fontWeight:600, fontSize:12, color:'#1a1a1a' }}>{s.users?.name || '—'}</p>
+                          {s.users?.ign && <p style={{ fontSize:10, color:'var(--red)', fontFamily:'IBM Plex Mono,monospace' }}>{s.users.ign}</p>}
+                        </td>
+                        <td className="table-td" style={{ padding:'4px 6px' }}>
+                          <input value={s.hero} onChange={e => updateStat(i,'hero',e.target.value)}
+                            placeholder="Hero" style={{ ...inp, padding:'4px 6px', width:85 }} />
+                        </td>
+                        {['kills','deaths','assists'].map(f => (
+                          <td key={f} className="table-td" style={{ padding:'4px 6px' }}>
+                            <input type="number" min={0} value={s[f]} onChange={e => updateStat(i,f,e.target.value)}
+                              style={{ ...inp, padding:'4px 6px', width:42, textAlign:'center' }} />
+                          </td>
+                        ))}
+                        <td className="table-td" style={{ padding:'4px 8px', textAlign:'center' }}>
+                          <input type="checkbox" checked={s.mvp} onChange={e => updateStat(i,'mvp',e.target.checked)}
+                            style={{ accentColor:'var(--brand)', width:14, height:14, cursor:'pointer' }} />
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            ) : (
+              /* Mode view — kartu per pemain */
+              <div style={{ display:'flex', flexDirection:'column', gap:8 }}>
+                {playerStats.map(s => {
+                  const kda = s.deaths===0 ? (s.kills+s.assists) : ((s.kills+s.assists)/s.deaths)
+                  const isMe = s.player_id === userId
+                  return (
+                    <div key={s.id} style={{ display:'flex', alignItems:'center', gap:10, padding:'9px 12px', borderRadius:8, background: isMe?'rgba(225,29,72,0.04)':'#fff', border:`1px solid ${isMe?'rgba(225,29,72,0.15)':'rgba(0,0,0,0.07)'}` }}>
+                      <div style={{ width:32, height:32, borderRadius:8, flexShrink:0, background:'rgba(0,0,0,0.04)', border:'1px solid rgba(0,0,0,0.08)', display:'flex', alignItems:'center', justifyContent:'center', fontSize:12, fontWeight:700, color:'#a39e98' }}>
+                        {(s.users?.name?.[0] || '?').toUpperCase()}
+                      </div>
+                      <div style={{ flex:1, minWidth:0 }}>
+                        <p style={{ fontWeight:600, fontSize:12, color: isMe?'var(--brand)':'#1a1a1a' }}>
+                          {s.users?.name || '—'} {isMe && <span style={{ fontSize:10 }}>(kamu)</span>}
+                        </p>
+                        <p style={{ fontSize:11, color:'#a39e98', marginTop:1 }}>{s.hero || '—'}</p>
+                      </div>
+                      <div style={{ textAlign:'right', flexShrink:0 }}>
+                        <p style={{ fontFamily:'IBM Plex Mono,monospace', fontSize:12, color:'#1a1a1a' }}>{s.kills}/{s.deaths}/{s.assists}</p>
+                        <p style={{ fontFamily:'IBM Plex Mono,monospace', fontSize:11, fontWeight:700, color:'var(--red)', marginTop:1 }}>KDA {kda.toFixed(2)}</p>
+                      </div>
+                      {s.mvp && (
+                        <span style={{ fontSize:10, fontWeight:700, padding:'2px 7px', borderRadius:4, background:'rgba(245,158,11,0.15)', color:'#b45309', flexShrink:0 }}>MVP</span>
+                      )}
+                    </div>
+                  )
+                })}
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Footer */}
+        <div style={{ padding:'12px 18px', borderTop:'1px solid rgba(0,0,0,0.08)', display:'flex', gap:8 }}>
+          {editing ? (
+            <>
+              <button onClick={() => setEditing(false)}
+                style={{ flex:1, padding:'9px 0', borderRadius:8, fontSize:12, fontWeight:600, background:'#f0efee', border:'1px solid rgba(0,0,0,0.1)', color:'#615d59', cursor:'pointer', fontFamily:'Syne,sans-serif' }}>
+                Batal
+              </button>
+              <button onClick={handleSave} disabled={saving}
+                style={{ flex:2, padding:'9px 0', borderRadius:8, fontSize:12, fontWeight:700, background:saving?'#f0efee':'var(--brand)', border:'none', color:saving?'#615d59':'#fff', cursor:saving?'not-allowed':'pointer', fontFamily:'Syne,sans-serif', display:'flex', alignItems:'center', justifyContent:'center', gap:6 }}>
+                {saving ? <><Loader2 size={13} style={{ animation:'spin 1s linear infinite' }}/> Menyimpan...</> : '💾 Simpan Perubahan'}
+              </button>
+            </>
+          ) : (
+            <button onClick={onClose}
+              style={{ flex:1, padding:'9px 0', borderRadius:8, fontSize:12, fontWeight:600, background:'#f0efee', border:'1px solid rgba(0,0,0,0.1)', color:'#615d59', cursor:'pointer', fontFamily:'Syne,sans-serif' }}>
+              Tutup
+            </button>
+          )}
+        </div>
+      </div>
+      <style>{`@keyframes spin{to{transform:rotate(360deg)}}`}</style>
+    </div>
+  )
+}
+
+/* ═══════════════════════════════════════════════════════
    MAIN PAGE
 ═══════════════════════════════════════════════════════ */
 export default function PlayerTeamPage() {
@@ -731,11 +991,13 @@ export default function PlayerTeamPage() {
   const [profile, setProfile]   = useState(null)
   const [team,    setTeam]       = useState(null)
   const [lineups, setLineups]    = useState([])
+  const [matches, setMatches]    = useState([])
   const [loading, setLoading]    = useState(true)
   const [isCaptain, setIsCaptain] = useState(false)
 
-  // modal
-  const [matchModal, setMatchModal] = useState(null) // lineup object
+  // modals
+  const [matchModal,  setMatchModal]  = useState(null) // lineup object → input match baru
+  const [detailModal, setDetailModal] = useState(null) // match object → lihat/edit match lama
 
   useEffect(() => {
     async function load() {
@@ -762,6 +1024,18 @@ export default function PlayerTeamPage() {
       )
       setIsCaptain(captain)
       setLoading(false)
+
+      // Load riwayat match tim (10 terbaru)
+      loadMatches(me.team_id)
+    }
+
+    async function loadMatches(teamId) {
+      const { data } = await supabase.from('matches')
+        .select('id, opponent, result, score, tournament, round, date, created_by')
+        .eq('team_id', teamId)
+        .order('date', { ascending: false })
+        .limit(10)
+      setMatches(data || [])
     }
     load()
   }, [user])
@@ -869,10 +1143,59 @@ export default function PlayerTeamPage() {
               <p style={{ fontSize: 11, color: 'var(--text-dim)', marginTop: 4 }}>Manager akan membuat lineup tim di panel mereka.</p>
             </div>
           )}
+
+          {/* ── Match Terbaru ─────────────────────────────── */}
+          <div style={{ marginTop: 24 }}>
+            <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:10 }}>
+              <p style={{ fontSize:10, fontWeight:700, textTransform:'uppercase', letterSpacing:'0.1em', color:'var(--text-dim)', fontFamily:'Syne,sans-serif', display:'flex', alignItems:'center', gap:6 }}>
+                <History size={12}/> Match Terbaru
+              </p>
+              <span style={{ fontSize:11, color:'var(--text-dim)' }}>{matches.length} match</span>
+            </div>
+
+            {matches.length === 0 ? (
+              <div className="card" style={{ textAlign:'center', padding:'28px 24px' }}>
+                <p style={{ fontSize:12, color:'var(--text-muted)', fontWeight:600 }}>Belum ada match tercatat.</p>
+                {isCaptain && <p style={{ fontSize:11, color:'var(--text-dim)', marginTop:5 }}>Gunakan tombol "Input Hasil Match" di lineup aktif untuk menambah match.</p>}
+              </div>
+            ) : (
+              <div className="card" style={{ padding:0, overflow:'hidden' }}>
+                {matches.map((m, i) => (
+                  <button key={m.id} onClick={() => setDetailModal(m)}
+                    style={{ width:'100%', display:'flex', alignItems:'center', gap:12, padding:'12px 16px', background:'transparent', border:'none', borderBottom: i < matches.length-1 ? '1px solid rgba(0,0,0,0.06)' : 'none', cursor:'pointer', textAlign:'left', transition:'background 0.1s' }}
+                    onMouseEnter={e => e.currentTarget.style.background='rgba(0,0,0,0.02)'}
+                    onMouseLeave={e => e.currentTarget.style.background='transparent'}
+                  >
+                    {/* Result pill */}
+                    <div style={{ width:36, height:36, borderRadius:9, flexShrink:0, display:'flex', alignItems:'center', justifyContent:'center', fontWeight:800, fontSize:10, fontFamily:'Syne,sans-serif', letterSpacing:'0.04em', background: m.result==='Win'?'rgba(5,150,105,0.1)':'rgba(225,29,72,0.08)', color: m.result==='Win'?'#059669':'var(--brand)', border:`1px solid ${m.result==='Win'?'rgba(5,150,105,0.2)':'rgba(225,29,72,0.15)'}` }}>
+                      {m.result==='Win' ? 'W' : 'L'}
+                    </div>
+                    {/* Info */}
+                    <div style={{ flex:1, minWidth:0 }}>
+                      <p style={{ fontWeight:600, fontSize:13, color:'var(--text-primary)', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>
+                        vs {m.opponent}
+                      </p>
+                      <div style={{ display:'flex', alignItems:'center', gap:8, marginTop:2, flexWrap:'wrap' }}>
+                        {m.tournament && <span style={{ fontSize:10, color:'var(--text-dim)' }}>{m.tournament}</span>}
+                        {m.score && <span style={{ fontFamily:'IBM Plex Mono,monospace', fontSize:10, color:'var(--text-muted)' }}>{m.score}</span>}
+                        <span style={{ fontSize:10, color:'var(--text-dim)' }}>{m.date}</span>
+                      </div>
+                    </div>
+                    {/* Edit hint untuk kapten */}
+                    {isCaptain ? (
+                      <Pencil size={13} style={{ color:'var(--text-dim)', flexShrink:0 }}/>
+                    ) : (
+                      <ChevronDown size={13} style={{ transform:'rotate(-90deg)', color:'var(--text-dim)', flexShrink:0 }}/>
+                    )}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
         </>
       )}
 
-      {/* Modal input match */}
+      {/* Modal input match baru */}
       {matchModal && (
         <MatchInputModal
           lineup={matchModal}
@@ -880,7 +1203,22 @@ export default function PlayerTeamPage() {
           userId={user?.id}
           addToast={addToast}
           onClose={() => setMatchModal(null)}
-          onSuccess={() => {}}
+          onSuccess={() => profile?.team_id && supabase.from('matches').select('id, opponent, result, score, tournament, round, date, created_by').eq('team_id', profile.team_id).order('date', { ascending: false }).limit(10).then(({ data }) => setMatches(data || []))}
+        />
+      )}
+
+      {/* Modal detail/edit match lama */}
+      {detailModal && (
+        <MatchDetailModal
+          match={detailModal}
+          isCaptain={isCaptain}
+          userId={user?.id}
+          addToast={addToast}
+          onClose={() => setDetailModal(null)}
+          onSaved={() => {
+            setDetailModal(null)
+            if (profile?.team_id) supabase.from('matches').select('id, opponent, result, score, tournament, round, date, created_by').eq('team_id', profile.team_id).order('date', { ascending: false }).limit(10).then(({ data }) => setMatches(data || []))
+          }}
         />
       )}
     </DashboardLayout>
