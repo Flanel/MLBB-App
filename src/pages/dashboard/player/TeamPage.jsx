@@ -68,11 +68,11 @@ Catatan penting:
           { category: "HARM_CATEGORY_HATE_SPEECH", threshold: "BLOCK_NONE" },
           { category: "HARM_CATEGORY_SEXUALLY_EXPLICIT", threshold: "BLOCK_NONE" }
         ],
+        // ... kode atas tetap sama ...
         generationConfig: { 
           temperature: 0.1, 
-          maxOutputTokens: 1024,
+          maxOutputTokens: 2048, // [ENHANCEMENT]: Dinaikkan agar JSON tidak mudah terpotong
           responseMimeType: "application/json",
-          // [ENHANCEMENT]: Paksa AI mematuhi skema JSON secara absolut
           responseSchema: {
             type: "OBJECT",
             properties: {
@@ -104,39 +104,32 @@ Catatan penting:
   
   if (!res.ok) {
     const err = await res.json()
+    // Ini akan menangkap error "high demand" dari Google
     throw new Error(err?.error?.message || `Gemini error ${res.status}`)
   }
   
   const data = await res.json()
   const candidate = data.candidates?.[0]
 
+  // Jika terblokir karena indikasi kekerasan dalam game
   if (candidate?.finishReason === 'SAFETY') {
-    throw new Error("Analisis diblokir oleh Safety Filter Google. Coba gambar lain atau crop bagian yang tidak perlu.")
+    throw new Error("Analisis diblokir oleh sistem Google. Coba crop gambar bagian skornya saja.")
   }
 
   const text = candidate?.content?.parts?.[0]?.text || ''
   const clean = text.replace(/```json|```/gi, '').trim()
 
   if (!clean) {
-    throw new Error("Gagal mengekstrak data dari gambar. Pastikan screenshot terlihat jelas.")
+    throw new Error("Server merespons kosong. Pastikan screenshot terlihat jelas.")
   }
 
-  return JSON.parse(clean)
-}
-
-/* ═══════════════════════════════════════════════════════
-   Sub-komponen: Badge role
-═══════════════════════════════════════════════════════ */
-function RoleBadge({ role }) {
-  return (
-    <span style={{
-      fontSize: 10, fontWeight: 600, padding: '2px 7px', borderRadius: 4,
-      background: `${ROLE_COLOR[role] || 'var(--text-dim)'}22`,
-      color: ROLE_COLOR[role] || 'var(--text-dim)',
-      border: `1px solid ${ROLE_COLOR[role] || 'var(--text-dim)'}44`,
-      fontFamily: 'Syne, sans-serif', letterSpacing: '0.04em',
-    }}>{role}</span>
-  )
+  // [ENHANCEMENT]: Tangkap error jika AI mengembalikan JSON yang terpotong karena server sibuk
+  try {
+    return JSON.parse(clean)
+  } catch (err) {
+    console.error("Gagal parse JSON dari AI. Raw text:", text)
+    throw new Error("Server AI sedang tidak stabil dan mengembalikan data terpotong. Silakan coba lagi dalam beberapa saat.")
+  }
 }
 
 /* ═══════════════════════════════════════════════════════
