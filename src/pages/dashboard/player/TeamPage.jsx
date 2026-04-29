@@ -81,7 +81,11 @@ Catatan penting:
             { inline_data: { mime_type: mimeType, data: base64 } },
           ],
         }],
-        generationConfig: { temperature: 0.1, maxOutputTokens: 1024 },
+        generationConfig: { 
+          temperature: 0.1, 
+          maxOutputTokens: 1024,
+          responseMimeType: "application/json" // <--- Tambahkan properti ini
+        },
       }),
     }
   )
