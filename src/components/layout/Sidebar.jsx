@@ -5,9 +5,10 @@ import {
   LayoutDashboard, Users, Shield, ClipboardList, Settings,
   Swords, Trophy, BarChart2, UserCircle, History,
   LogOut, Calendar, TrendingUp, X, Link2, CheckSquare,
-  UserCog, Zap, Flag
+  UserCog, Zap, Flag, Star
 } from 'lucide-react'
 
+// Nav config statis — captain items di-inject secara dinamis di komponen
 const navConfig = {
   super_admin: [
     { group:'Main', items:[
@@ -88,15 +89,35 @@ const navConfig = {
   ],
 }
 
+// Nav tambahan khusus captain — di-inject sebelum grup Account
+const captainReportsGroup = {
+  group: 'Captain Reports',
+  items: [
+    { to: '/player/analytics', label: 'Analytics Tim',    icon: BarChart2  },
+    { to: '/player/winrate',   label: 'Party Win Rate',   icon: TrendingUp },
+  ],
+}
+
 const roleLabels = {
   super_admin:'Super Admin', team_manager:'Team Manager',
   staff:'Staff', player:'Player',
 }
 
 export default function Sidebar({ mobileOpen, onMobileClose }) {
-  const { user, role, signOut } = useAuth()
-  const groups   = navConfig[role] || []
-  const initials = (user?.email||'NK').slice(0,2).toUpperCase()
+  const { user, role, isCaptain, signOut } = useAuth()
+
+  // Inject captain reports group untuk player yang is_captain
+  let groups = navConfig[role] || []
+  if (role === 'player' && isCaptain) {
+    const accountIdx = groups.findIndex(g => g.group === 'Account')
+    groups = [
+      ...groups.slice(0, accountIdx),
+      captainReportsGroup,
+      ...groups.slice(accountIdx),
+    ]
+  }
+
+  const initials = (user?.email || 'NK').slice(0, 2).toUpperCase()
 
   return (
     <>
@@ -125,7 +146,14 @@ export default function Sidebar({ mobileOpen, onMobileClose }) {
         <nav className="sidebar-nav">
           {groups.map(group => (
             <div key={group.group}>
-              <p className="sidebar-group-label">{group.group}</p>
+              <p className="sidebar-group-label" style={{
+                display: 'flex', alignItems: 'center', gap: 4,
+              }}>
+                {group.group === 'Captain Reports' && (
+                  <Star size={9} style={{ color: 'rgba(251,191,36,0.7)', flexShrink:0 }}/>
+                )}
+                {group.group}
+              </p>
               <div style={{ display:'flex', flexDirection:'column', gap:1 }}>
                 {group.items.map(item => {
                   const Icon = item.icon
@@ -150,7 +178,14 @@ export default function Sidebar({ mobileOpen, onMobileClose }) {
             {initials}
           </div>
           <div style={{ flex:1, minWidth:0 }}>
-            <p style={{ fontSize:12, fontWeight:500, color:'rgba(255,255,255,0.72)', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{user?.email}</p>
+            <div style={{ display:'flex', alignItems:'center', gap:5 }}>
+              <p style={{ fontSize:12, fontWeight:500, color:'rgba(255,255,255,0.72)', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{user?.email}</p>
+              {role === 'player' && isCaptain && (
+                <span style={{ fontSize:9, padding:'1px 5px', borderRadius:4, background:'rgba(251,191,36,0.15)', border:'1px solid rgba(251,191,36,0.3)', color:'#fbbf24', fontWeight:600, flexShrink:0 }}>
+                  KAPTEN
+                </span>
+              )}
+            </div>
             <p style={{ fontSize:10, color:'rgba(255,255,255,0.28)', marginTop:1 }}>{roleLabels[role]||role}</p>
           </div>
           <button onClick={signOut} title="Keluar"

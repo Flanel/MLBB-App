@@ -33,6 +33,10 @@ import PlayerTournaments  from '@/pages/dashboard/player/TournamentsPage'
 import PlayerSchedulePage from '@/pages/dashboard/player/SchedulePage'
 import PlayerTeamPage     from '@/pages/dashboard/player/TeamPage'
 
+// Captain analytics — reuse komponen yang sama, akses dikontrol via CaptainRoute
+import CaptainAnalyticsPage from '@/pages/dashboard/player/CaptainAnalyticsPage'
+import CaptainWinRatePage   from '@/pages/dashboard/player/CaptainWinRatePage'
+
 const SA  = ['super_admin']
 const TMS = ['super_admin','team_manager','staff']
 const TM  = ['super_admin','team_manager']
@@ -43,6 +47,15 @@ function DashboardRedirect() {
   if (loading || !role) return null
   const map = { super_admin:'/super-admin', team_manager:'/team-manager', staff:'/team-manager', player:'/player' }
   return <Navigate to={map[role]||'/super-admin'} replace />
+}
+
+// Guard khusus captain: player harus is_captain untuk akses halaman ini
+function CaptainRoute({ children }) {
+  const { role, isCaptain, loading } = useAuth()
+  if (loading) return null
+  if (role !== 'player') return <Navigate to="/dashboard" replace />
+  if (!isCaptain) return <Navigate to="/player" replace />
+  return children
 }
 
 export default function App() {
@@ -81,6 +94,12 @@ export default function App() {
         <Route path="/player/tournaments" element={<ProtectedRoute allowedRoles={ALL}><PlayerTournaments /></ProtectedRoute>} />
         <Route path="/player/schedule"    element={<ProtectedRoute allowedRoles={ALL}><PlayerSchedulePage /></ProtectedRoute>} />
         <Route path="/player/team"        element={<ProtectedRoute allowedRoles={ALL}><PlayerTeamPage /></ProtectedRoute>} />
+
+        {/* Captain-only routes — hanya player dengan is_captain=true */}
+        <Route path="/player/analytics"
+          element={<ProtectedRoute allowedRoles={ALL}><CaptainRoute><CaptainAnalyticsPage /></CaptainRoute></ProtectedRoute>} />
+        <Route path="/player/winrate"
+          element={<ProtectedRoute allowedRoles={ALL}><CaptainRoute><CaptainWinRatePage /></CaptainRoute></ProtectedRoute>} />
 
         <Route path="*" element={<Navigate to="/dashboard" replace />} />
       </Routes>
