@@ -203,7 +203,6 @@ export default function TeamLineupPage() {
         <p style={{ fontSize:13, color:'var(--text-muted)', lineHeight:1.6 }}>
           <strong style={{ color:'var(--text-primary)', fontWeight:600 }}>Tim</strong> adalah lineup tetap untuk tournament.
           Pemain ditambahkan langsung dari <strong style={{ color:'var(--text-primary)', fontWeight:600 }}>Roster</strong> aktif.
-          Beda dengan Squad yang sifatnya fleksibel.
         </p>
       </div>
 
