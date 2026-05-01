@@ -35,8 +35,8 @@ export default function PlayerTournamentsPage() {
         ) : tournaments.length === 0 ? (
           <p style={{ textAlign:'center', color:'var(--text-dim)', padding:'32px 0', fontSize:12 }}>Belum ada tournament.</p>
         ) : (
-          <div style={{ overflowX:'auto' }}>
-            <table style={{ width:'100%' }}>
+          <div className="table-scroll-container">
+            <table style={{ width:'100%', minWidth:600 }}>
               <thead><tr>{['Tournament','Platform','Format','Periode','Tim','Placement','Status'].map(h=><th key={h} className="table-th">{h}</th>)}</tr></thead>
               <tbody>
                 {tournaments.map(t => (

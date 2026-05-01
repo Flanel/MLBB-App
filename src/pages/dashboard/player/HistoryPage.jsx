@@ -231,8 +231,8 @@ export default function HistoryPage() {
         ) : filtered.length === 0 ? (
           <p style={{ textAlign:'center', color:'var(--text-dim)', padding:'24px 0', fontSize:12 }}>Tidak ada data match.</p>
         ) : (
-          <div style={{ overflowX:'auto' }}>
-            <table style={{ width:'100%' }}>
+          <div className="table-scroll-container">
+            <table style={{ width:'100%', minWidth:600 }}>
               <thead>
                 <tr>
                   {['Tournament','Lawan','Hero','K/D/A','KDA','Hasil','MVP','Tanggal','Aksi'].map(h => (

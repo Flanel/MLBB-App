@@ -156,7 +156,7 @@ export default function TeamsPage() {
       </div>
 
       {/* KPI */}
-      <div style={{ display:'grid', gridTemplateColumns:'repeat(3,1fr)', gap:12, marginBottom:20 }}>
+      <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit,minmax(140px,1fr))', gap:12, marginBottom:20 }}>
         {[
           { label:'Total Tim', value: teams.length, sub:'terdaftar' },
           { label:'Aktif', value: activeCount, sub:'bisa login' },
@@ -190,8 +190,8 @@ export default function TeamsPage() {
             {search ? 'Tidak ada tim yang cocok.' : 'Belum ada tim. Buat tim pertama di atas.'}
           </p>
         ) : (
-          <div style={{ overflowX:'auto' }}>
-            <table style={{ width:'100%' }}>
+          <div className="table-scroll-container">
+            <table style={{ width:'100%', minWidth:600 }}>
               <thead>
                 <tr>{['Tim','Game','Member','Status','Dibuat','Aksi'].map(h=><th key={h} className="table-th">{h}</th>)}</tr>
               </thead>

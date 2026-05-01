@@ -40,7 +40,7 @@ function AppCard({ app, onReview }) {
           </span>
         </div>
 
-        <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:8, marginBottom:12 }}>
+        <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit,minmax(140px,1fr))', gap:8, marginBottom:12 }}>
           <div style={{ display:'flex', alignItems:'center', gap:6 }}>
             <Calendar size={11} style={{ color:'var(--text-dim)', flexShrink:0 }}/>
             <span style={{ fontSize:11, color:'var(--text-muted)' }}>
@@ -107,7 +107,7 @@ function StaffCard({ u, onActivate }) {
           </span>
         </div>
 
-        <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:8, marginBottom:12 }}>
+        <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit,minmax(140px,1fr))', gap:8, marginBottom:12 }}>
           {u.teams && (
             <div style={{ gridColumn:'1 / -1', display:'flex', alignItems:'center', gap:6 }}>
               <Shield size={11} style={{ color:'var(--text-dim)', flexShrink:0 }}/>
@@ -346,7 +346,7 @@ export default function ApprovalsPage() {
         <Modal open={!!selected} onClose={() => setSelected(null)} title="Review Pendaftaran Player">
           <div style={{ display:'flex', flexDirection:'column', gap:14 }}>
             <div style={{ background:'var(--bg-surface)', borderRadius:10, padding:'14px', border:'1px solid var(--border-1)' }}>
-              <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:10 }}>
+              <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit,minmax(160px,1fr))', gap:10 }}>
                 {[
                   ['Nickname',      selected.nickname],
                   ['Nama Asli',     selected.full_name],
@@ -390,7 +390,7 @@ export default function ApprovalsPage() {
         <Modal open={!!activateTarget} onClose={() => setActivateTarget(null)} title="Aktivasi Akun">
           <div style={{ display:'flex', flexDirection:'column', gap:16 }}>
             <div style={{ background:'var(--bg-surface)', borderRadius:10, padding:'14px', border:'1px solid var(--border-1)' }}>
-              <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:10 }}>
+              <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit,minmax(160px,1fr))', gap:10 }}>
                 {[
                   ['Nama',  activateTarget.name || '—'],
                   ['Email', activateTarget.email],

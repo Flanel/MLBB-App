@@ -187,8 +187,8 @@ export default function RosterPage() {
         ) : filtered.length === 0 ? (
           <p style={{ textAlign:'center', color:'var(--text-dim)', padding:'32px 0', fontSize:12 }}>Tidak ada anggota ditemukan.</p>
         ) : (
-          <div style={{ overflowX:'auto' }}>
-            <table style={{ width:'100%' }}>
+          <div className="table-scroll-container">
+            <table style={{ width:'100%', minWidth:600 }}>
               <thead>
                 <tr>{['Nama / IGN','Lane','Regional','Role','Status','Aksi'].map(h=>(
                   <th key={h} className="table-th">{h}</th>
@@ -270,7 +270,7 @@ export default function RosterPage() {
               </div>
             </div>
 
-            <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:10 }}>
+            <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit,minmax(160px,1fr))', gap:10 }}>
               {/* Regional */}
               <div style={{ background:'var(--bg-elevated)', borderRadius:8, padding:'12px' }}>
                 <p style={{ fontSize:10, fontWeight:600, textTransform:'uppercase', letterSpacing:'0.08em', color:'var(--text-dim)', marginBottom:8, fontFamily:'Syne,sans-serif' }}>Regional</p>

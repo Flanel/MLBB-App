@@ -75,7 +75,7 @@ export default function Topbar({ title, subtitle, onMenuClick }) {
         </button>
 
         {open && (
-          <div style={{
+          <div className="notif-dropdown" style={{
             position:'absolute', top:'calc(100% + 8px)', right:0,
             width:340, maxHeight:480,
             background:'var(--canvas)',

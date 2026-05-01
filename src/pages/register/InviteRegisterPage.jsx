@@ -330,7 +330,7 @@ export default function InviteRegisterPage() {
                     value={fullName} onChange={e=>setFullName(e.target.value)} required />
                 </div>
 
-                <div style={{ display:'grid',gridTemplateColumns:'1fr 1fr',gap:12 }}>
+                <div style={{ display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(180px,1fr))',gap:12 }}>
                   <div>
                     <label className="form-label">Kota Lahir *</label>
                     <input className="form-input" placeholder="Jakarta" maxLength={60}

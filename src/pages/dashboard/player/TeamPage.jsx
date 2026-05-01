@@ -577,7 +577,7 @@ function MatchInputModal({ lineup, teamId, userId, addToast, onClose, onSuccess 
                     fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em',
                     color: 'var(--text-dim)', marginBottom: 12, fontFamily: 'Syne, sans-serif',
                   }}>Stats Pemain</p>
-                  <div style={{ overflowX: 'auto' }}>
+                  <div className="table-scroll-container">
                     <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
                       <thead>
                         <tr>
@@ -888,7 +888,7 @@ function MatchDetailModal({ match, isCaptain, userId, addToast, onClose, onSaved
               <p style={{ fontSize:12, color:'#a39e98', textAlign:'center', padding:'12px 0' }}>Belum ada stats pemain.</p>
             ) : editing ? (
               /* Mode edit — tabel dengan input */
-              <div style={{ overflowX:'auto' }}>
+              <div className="table-scroll-container">
                 <table style={{ width:'100%', borderCollapse:'collapse', fontSize:12 }}>
                   <thead>
                     <tr>

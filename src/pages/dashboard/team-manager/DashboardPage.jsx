@@ -78,8 +78,8 @@ export default function TmDashboardPage() {
         ) : matches.length === 0 ? (
           <p style={{ textAlign:'center', color:'var(--text-dim)', padding:'24px 0', fontSize:12 }}>Belum ada match. Input pertama di halaman Match Input.</p>
         ) : (
-          <div style={{ overflowX:'auto' }}>
-            <table style={{ width:'100%' }}>
+          <div className="table-scroll-container">
+            <table style={{ width:'100%', minWidth:600 }}>
               <thead>
                 <tr>{['Lawan','Hasil','Tournament','Tanggal'].map(h => <th key={h} className="table-th">{h}</th>)}</tr>
               </thead>

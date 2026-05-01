@@ -35,8 +35,8 @@ export default function DataTable({ columns, rows, searchKeys = [], emptyText = 
             value={query} onChange={e => { setQuery(e.target.value); setPage(1) }} />
         </div>
       )}
-      <div style={{ overflowX:'auto' }}>
-        <table style={{ width:'100%' }}>
+      <div className="table-scroll-container">
+        <table style={{ width:'100%', minWidth:600 }}>
           <thead>
             <tr>
               {columns.map(col => (

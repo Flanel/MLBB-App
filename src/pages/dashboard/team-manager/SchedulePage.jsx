@@ -155,7 +155,7 @@ export default function SchedulePage() {
       {loading ? (
         <p style={{ textAlign:'center', color:'var(--text-dim)', padding:'32px 0', fontSize:12 }}>Memuat...</p>
       ) : (
-        <div style={{ display:'grid', gridTemplateColumns:'320px 1fr', gap:16, alignItems:'start' }}>
+        <div style={{ display:'grid', gridTemplateColumns:'minmax(min(320px,100%),auto) 1fr', gap:16, alignItems:'start' }}>
           {/* Calendar */}
           <div className="card" style={{ padding:0, overflow:'hidden' }}>
             <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', padding:'14px 16px', borderBottom:'1px solid var(--border-1)' }}>
@@ -277,7 +277,7 @@ export default function SchedulePage() {
             )}
           </div>
 
-          <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:12 }}>
+          <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit,minmax(180px,1fr))', gap:12 }}>
             <div>
               <label className="form-label">Tipe Sesi</label>
               <select className="form-input" value={form.type} onChange={e=>setForm(f=>({...f,type:e.target.value}))}>
@@ -286,7 +286,7 @@ export default function SchedulePage() {
             </div>
             <div><label className="form-label">Tanggal *</label><input type="date" className="form-input" value={form.date} onChange={e=>setForm(f=>({...f,date:e.target.value}))} /></div>
           </div>
-          <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:12 }}>
+          <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit,minmax(180px,1fr))', gap:12 }}>
             <div><label className="form-label">Jam Mulai</label><input type="time" className="form-input" value={form.start_time} onChange={e=>setForm(f=>({...f,start_time:e.target.value}))} /></div>
             <div><label className="form-label">Jam Selesai</label><input type="time" className="form-input" value={form.end_time} onChange={e=>setForm(f=>({...f,end_time:e.target.value}))} /></div>
           </div>

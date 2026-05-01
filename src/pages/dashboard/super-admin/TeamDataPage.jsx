@@ -246,8 +246,8 @@ export default function TeamDataPage() {
             <p>Tidak ada data.</p>
           </div>
         ) : (
-          <div style={{ overflowX:'auto' }}>
-            <table style={{ width:'100%' }}>
+          <div className="table-scroll-container">
+            <table style={{ width:'100%', minWidth:600 }}>
               <thead>
                 <tr>
                   {activeTab === 'members' && ['Nama','Role','IGN','Status','Aksi'].map(h => <th key={h} className="table-th">{h}</th>)}

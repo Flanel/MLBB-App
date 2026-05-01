@@ -155,8 +155,8 @@ function MatchForm({ teamId, isTournament, tournaments, players, squads, user, a
             Statistik Pemain
             <span style={{ fontWeight:400, textTransform:'none', letterSpacing:0, color:'var(--text-dim)' }}> (isi hero untuk simpan stats)</span>
           </p>
-          <div style={{ overflowX:'auto' }}>
-            <table style={{ width:'100%' }}>
+          <div className="table-scroll-container">
+            <table style={{ width:'100%', minWidth:600 }}>
               <thead>
                 <tr>{['Pemain','Hero','K','D','A','MVP'].map(h=><th key={h} className="table-th">{h}</th>)}</tr>
               </thead>
@@ -215,7 +215,7 @@ function HistoryTab({ teamId }) {
 
   return (
     <div>
-      <div style={{ display:'grid', gridTemplateColumns:'repeat(4,1fr)', gap:12, marginBottom:20 }}>
+      <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit,minmax(130px,1fr))', gap:12, marginBottom:20 }}>
         {[
           { label:'Total', val:matches.length, color:'var(--text-primary)' },
           { label:'Menang', val:wins, color:'var(--green)' },
@@ -260,7 +260,7 @@ function HistoryTab({ teamId }) {
                 </div>
                 {isEx && m.match_player_stats?.length>0 && (
                   <div style={{ marginTop:12, paddingTop:12, borderTop:'1px solid var(--border-1)', overflowX:'auto' }}>
-                    <table style={{ width:'100%' }}>
+                    <table style={{ width:'100%', minWidth:600 }}>
                       <thead><tr>{['Pemain','Hero','K','D','A',''].map((h,i)=><th key={i} className="table-th" style={{ fontSize:10 }}>{h}</th>)}</tr></thead>
                       <tbody>
                         {m.match_player_stats.map(s=>(

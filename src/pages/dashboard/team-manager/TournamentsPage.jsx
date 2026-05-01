@@ -107,7 +107,7 @@ export default function TournamentsPage() {
         ) : tournaments.length === 0 ? (
           <p style={{ textAlign: 'center', color: 'var(--text-dim)', padding: '32px 0', fontSize: 12 }}>Belum ada tournament. Tambah tournament pertama!</p>
         ) : (
-          <div style={{ overflowX: 'auto' }}>
+          <div className="table-scroll-container">
             <table style={{ width: '100%' }}>
               <thead>
                 <tr>
@@ -184,7 +184,7 @@ export default function TournamentsPage() {
               onChange={e => setForm(f => ({ ...f, name: e.target.value }))}
             />
           </div>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(180px,1fr))', gap: 12 }}>
             <div>
               <label className="form-label">Platform</label>
               <input

@@ -473,3 +473,141 @@
   .sidebar-close-btn { display: none !important; }
   .mobile-backdrop   { display: none !important; }
 }
+
+/* ================================================================
+   RESPONSIVE FIXES — Mobile / iOS / Android
+   ================================================================ */
+
+/* Prevent text zoom on iOS input focus */
+input, select, textarea {
+  font-size: 16px !important;
+  -webkit-text-size-adjust: 100%;
+}
+/* But keep design system font size for non-interactive text */
+.form-label, .badge, .table-th, .table-td, .sidebar-item,
+.btn, .topbar-title {
+  font-size: inherit !important;
+}
+
+/* Safe area insets for iOS notch / home indicator */
+.app-shell {
+  padding-bottom: env(safe-area-inset-bottom);
+  padding-left: env(safe-area-inset-left);
+  padding-right: env(safe-area-inset-right);
+}
+.app-sidebar {
+  padding-bottom: env(safe-area-inset-bottom);
+}
+.topbar {
+  padding-top: env(safe-area-inset-top);
+  height: calc(var(--topbar-height) + env(safe-area-inset-top));
+}
+
+/* Better tap targets on touch devices */
+@media (pointer: coarse) {
+  .btn             { min-height: 40px; padding: 8px 14px; }
+  .sidebar-item    { padding: 10px 12px; min-height: 40px; }
+  .form-input      { min-height: 44px; padding: 10px 12px; }
+  .hamburger-btn   { min-height: 44px; min-width: 44px; justify-content: center; }
+  .table-td .btn   { min-height: 34px; }
+}
+
+/* ── Mobile breakpoint (≤ 640px) ── */
+@media (max-width: 640px) {
+  :root { --sidebar-width: 240px; }
+
+  .page-content { padding: 16px 14px; }
+
+  /* Tables → horizontal scroll wrapper */
+  .table-responsive-wrap {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    margin: 0 -18px;
+    padding: 0 18px;
+  }
+
+  /* Card full-width */
+  .card { padding: 14px; border-radius: var(--radius-md); }
+
+  /* Stack flex toolbars */
+  .toolbar-row {
+    flex-direction: column !important;
+    align-items: stretch !important;
+    gap: 8px !important;
+  }
+  .toolbar-row > * { width: 100% !important; max-width: 100% !important; }
+
+  /* KPI cards — 2 columns */
+  .kpi-grid {
+    grid-template-columns: repeat(2, 1fr) !important;
+  }
+
+  /* Modal — full-width sheet on mobile */
+  .modal-panel {
+    border-radius: var(--radius-xl) var(--radius-xl) 0 0 !important;
+    position: fixed !important;
+    bottom: 0 !important;
+    left: 0 !important;
+    right: 0 !important;
+    max-width: 100% !important;
+    width: 100% !important;
+    max-height: 92dvh !important;
+    overflow-y: auto !important;
+    padding-bottom: env(safe-area-inset-bottom) !important;
+  }
+  .modal-overlay {
+    align-items: flex-end !important;
+    padding: 0 !important;
+  }
+
+  /* Topbar title smaller */
+  .topbar-title { font-size: 13px; }
+  .topbar { padding: 0 12px; gap: 8px; }
+
+  /* Notification dropdown — full width on mobile */
+  .notif-dropdown {
+    position: fixed !important;
+    top: calc(var(--topbar-height) + env(safe-area-inset-top)) !important;
+    left: 8px !important;
+    right: 8px !important;
+    width: auto !important;
+  }
+
+  /* Tabs — horizontal scroll */
+  .tabs-row {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    flex-wrap: nowrap !important;
+    padding-bottom: 4px;
+  }
+  .tabs-row::-webkit-scrollbar { display: none; }
+
+  /* Action buttons in table — stack or shrink */
+  .action-cell { display: flex; flex-direction: column; gap: 4px; }
+  .action-cell .btn { font-size: 11px; padding: 4px 8px; }
+
+  /* Page heading size */
+  .page-heading { font-size: 18px; }
+
+  /* Form grids → single column */
+  .form-grid-2, .form-grid-3 {
+    grid-template-columns: 1fr !important;
+  }
+
+  /* Calendar on mobile */
+  .cal-layout { grid-template-columns: 1fr !important; }
+}
+
+/* ── Tablet (641–1024px) ── */
+@media (min-width: 641px) and (max-width: 1024px) {
+  .page-content { padding: 20px 22px; }
+  .kpi-grid { grid-template-columns: repeat(2, 1fr) !important; }
+  .card { padding: 16px; }
+}
+
+/* Ensure overflow-x: auto on all tables for any screen width */
+.table-scroll-container {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  width: 100%;
+}

@@ -57,13 +57,13 @@ export default function AuditPage() {
           </div>
         </div>
 
-        <div style={{ overflowX:'auto' }}>
+        <div className="table-scroll-container">
           {loading ? (
             <p style={{ textAlign:'center', color:'var(--text-dim)', padding:'32px 0', fontSize:12 }}>Memuat...</p>
           ) : filtered.length === 0 ? (
             <p style={{ textAlign:'center', color:'var(--text-dim)', padding:'32px 0', fontSize:12 }}>Tidak ada log yang ditemukan.</p>
           ) : (
-            <table style={{ width:'100%' }}>
+            <table style={{ width:'100%', minWidth:600 }}>
               <thead><tr>{['User','Role','Aksi','Target','Waktu'].map(h=><th key={h} className="table-th">{h}</th>)}</tr></thead>
               <tbody>
                 {filtered.map(log => (

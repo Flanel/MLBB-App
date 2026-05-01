@@ -42,7 +42,7 @@ export default function TopUpPage() {
         </div>
 
         {/* Tips */}
-        <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr 1fr', gap:10, marginTop:16 }}>
+        <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit,minmax(120px,1fr))', gap:10, marginTop:16 }}>
           {[
             { icon:Shield, label:'Aman & Terpercaya', desc:'Website mitra resmi' },
             { icon:Clock,  label:'Proses Cepat',      desc:'Masuk dalam menit' },

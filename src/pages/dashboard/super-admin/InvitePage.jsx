@@ -119,7 +119,7 @@ export default function SAInvitePage() {
       </div>
 
       {/* Summary cards */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 12, marginBottom: 20 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(140px,1fr))', gap: 12, marginBottom: 20 }}>
         {[
           { label: 'Manager Diundang', count: tokens.filter(t => t.role === 'team_manager' && t.used_at).length, color: '#38bdf8' },
           { label: 'Staff Diundang',   count: tokens.filter(t => t.role === 'staff' && t.used_at).length, color: '#f59e0b' },

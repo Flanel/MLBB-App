@@ -101,7 +101,7 @@ export default function ProfilePage() {
         <p style={{ fontSize:12, color:'var(--text-muted)' }}>Perbarui nickname, IGN, ID game, dan informasi profil kamu.</p>
       </div>
 
-      <div style={{ display:'grid', gridTemplateColumns:'1fr 300px', gap:16, alignItems:'start' }}>
+      <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit,minmax(min(300px,100%),1fr))', gap:16, alignItems:'start' }}>
         <form onSubmit={handleSave}>
           <div className="card" style={{ display:'flex', flexDirection:'column', gap:16 }}>
             {/* Avatar */}
