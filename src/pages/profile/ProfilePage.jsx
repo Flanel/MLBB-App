@@ -120,7 +120,7 @@ export default function ProfilePage() {
 
             {/* Nama tampilan */}
             <div>
-              <label className="form-label">Nama Tampilan *</label>
+              <label className="form-label">Nama Lengkap *</label>
               <input className="form-input" placeholder="Nama di sistem" value={form.name} onChange={e=>setForm(f=>({...f,name:e.target.value}))} required />
             </div>
 
