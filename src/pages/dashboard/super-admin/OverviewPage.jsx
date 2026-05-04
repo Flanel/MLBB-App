@@ -1,8 +1,3 @@
-// FIX BUG #3: Supabase { count: 'exact', head: true } mengembalikan data: null
-// dan menyimpan hitungan di field `count`, bukan di `data.length`.
-// Sebelumnya: usersData?.length → selalu 0 karena usersData = null.
-// Fix: destructure `count` langsung dari response, bukan `data`.
-
 import { useState, useEffect } from 'react'
 import DashboardLayout from '@/components/layout/DashboardLayout'
 import KpiCard from '@/components/ui/KpiCard'
@@ -62,7 +57,7 @@ export default function OverviewPage() {
         <KpiCard label="Sistem"      value="Online"                             sub="Semua normal" variant="up"      icon={Activity} />
       </div>
 
-      <div style={{ display:'grid', gridTemplateColumns:'2fr 1fr', gap:16 }}>
+      <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit,minmax(min(260px,100%),1fr))', gap:16 }}>
         {/* Teams table */}
         <div className="card">
           <p style={{ fontSize:10, fontWeight:600, textTransform:'uppercase', letterSpacing:'0.08em', color:'var(--text-dim)', marginBottom:14, fontFamily:'Syne,sans-serif' }}>Tim Terdaftar</p>

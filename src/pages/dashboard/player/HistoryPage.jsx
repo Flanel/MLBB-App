@@ -66,7 +66,7 @@ function EditModal({ record, userId, onClose, onSaved }) {
           <p style={{ fontSize:10, fontWeight:700, textTransform:'uppercase', letterSpacing:'0.08em', color:'#a39e98', marginBottom:10, fontFamily:'Syne,sans-serif' }}>
             Detail Match {!isOwner && <span style={{ color:'#dd5b00', fontWeight:400 }}>(hanya bisa diedit oleh pembuat match)</span>}
           </p>
-          <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:10, marginBottom:16 }}>
+          <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit,minmax(min(200px,100%),1fr))', gap:10, marginBottom:16 }}>
             <div style={{ gridColumn:'1/-1' }}>
               <label style={{ fontSize:11, color:'#615d59', display:'block', marginBottom:3 }}>Nama Lawan</label>
               <input style={{ ...inp, opacity: isOwner?1:0.5 }} disabled={!isOwner} value={form.opponent} onChange={e => setForm(f=>({...f,opponent:e.target.value}))} />
@@ -91,7 +91,7 @@ function EditModal({ record, userId, onClose, onSaved }) {
             </div>
           </div>
           <p style={{ fontSize:10, fontWeight:700, textTransform:'uppercase', letterSpacing:'0.08em', color:'#a39e98', marginBottom:10, fontFamily:'Syne,sans-serif' }}>Stats Kamu</p>
-          <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:10 }}>
+          <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit,minmax(min(200px,100%),1fr))', gap:10 }}>
             <div style={{ gridColumn:'1/-1' }}>
               <label style={{ fontSize:11, color:'#615d59', display:'block', marginBottom:3 }}>Hero</label>
               <input style={inp} value={stat.hero} onChange={e => setStat(s=>({...s,hero:e.target.value}))} placeholder="Nama hero" />
@@ -209,7 +209,7 @@ export default function HistoryPage() {
         <p style={{ fontSize:12, color:'var(--text-muted)' }}>Semua match tercatat milikmu season ini.</p>
       </div>
 
-      <div style={{ display:'grid', gridTemplateColumns:'repeat(3,1fr)', gap:12, marginBottom:16 }}>
+      <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit,minmax(min(140px,100%),1fr))', gap:12, marginBottom:16 }}>
         {[['TOTAL MATCH', records.length], ['WIN RATE', `${wr}%`], ['AVG KDA', avgKDA]].map(([l,v]) => (
           <div key={l} className="card">
             <p style={{ fontSize:10, fontWeight:600, textTransform:'uppercase', letterSpacing:'0.08em', color:'var(--text-dim)', fontFamily:'Syne,sans-serif', marginBottom:6 }}>{l}</p>

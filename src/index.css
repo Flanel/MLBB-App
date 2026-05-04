@@ -453,6 +453,14 @@
 .text-display { font-family: 'Inter', system-ui, sans-serif; }
 .text-mono    { font-family: 'IBM Plex Mono', monospace; }
 
+/* ── Calendar / split-panel layout ─────────────────────────────── */
+.cal-layout {
+  display: grid;
+  grid-template-columns: minmax(min(320px, 100%), auto) 1fr;
+  gap: 16px;
+  align-items: start;
+}
+
 /* ── Responsive ────────────────────────────────────────────────── */
 @media (max-width: 768px) {
   .app-sidebar {

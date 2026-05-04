@@ -1,14 +1,3 @@
-// AnalyticsPage.jsx — Updated: multi-team analytics untuk super_admin + analisis mendalam
-//
-// PERUBAHAN:
-// ─────────────────────────────────────────────────────────────────
-// 1. Super Admin: tambah team selector tabs → bisa compare antar tim
-// 2. Tambah Hero Usage stats (hero paling sering dipakai per tim)
-// 3. Tambah Lane KDA Contribution chart
-// 4. Tambah KPI summary cards (total match, WR%, win streak)
-// 5. Chemistry dihapus → sudah ditangani WinRatePage (Party Win Rate)
-// ─────────────────────────────────────────────────────────────────
-
 import { useState, useEffect, useCallback } from 'react'
 import DashboardLayout from '@/components/layout/DashboardLayout'
 import {
@@ -236,11 +225,11 @@ export default function AnalyticsPage() {
 
       {(loading || teamLoading) ? (
         <div style={{ display:'flex', flexDirection:'column', gap:16 }}>
-          <div style={{ display:'grid', gridTemplateColumns:'repeat(4,1fr)', gap:12 }}>
+          <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit,minmax(min(120px,100%),1fr))', gap:12 }}>
             {[1,2,3,4].map(i => <div key={i} className="card"><Skeleton h={60}/></div>)}
           </div>
           <div className="card"><Skeleton h={200}/></div>
-          <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:16 }}>
+          <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit,minmax(min(200px,100%),1fr))', gap:16 }}>
             <div className="card"><Skeleton h={180}/></div>
             <div className="card"><Skeleton h={180}/></div>
           </div>
@@ -255,7 +244,7 @@ export default function AnalyticsPage() {
               <p style={{ fontSize:12, color:'var(--text-dim)' }}>Tambahkan match di halaman Match Input untuk melihat tren win rate.</p>
             </div>
           </div>
-          <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:16 }}>
+          <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit,minmax(min(200px,100%),1fr))', gap:16 }}>
             <div className="card">
               <p style={{ fontSize:10, fontWeight:600, textTransform:'uppercase', letterSpacing:'0.08em', color:'var(--text-dim)', marginBottom:14, fontFamily:'Syne,sans-serif' }}>Top Performer — KDA</p>
               <div className="empty-state" style={{ padding:'24px 0' }}>
@@ -301,7 +290,7 @@ export default function AnalyticsPage() {
             </ResponsiveContainer>
           </div>
 
-          <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:16, marginBottom:16 }}>
+          <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fit,minmax(min(200px,100%),1fr))', gap:16, marginBottom:16 }}>
             {/* Top Performer */}
             <div className="card">
               <p style={{ fontSize:10, fontWeight:600, textTransform:'uppercase', letterSpacing:'0.08em', color:'var(--text-dim)', marginBottom:14, fontFamily:'Syne,sans-serif' }}>

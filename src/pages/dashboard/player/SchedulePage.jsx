@@ -128,7 +128,7 @@ export default function PlayerSchedulePage() {
       {loading ? (
         <p style={{ textAlign:'center', color:'var(--text-dim)', padding:'32px 0', fontSize:12 }}>Memuat...</p>
       ) : (
-        <div style={{ display:'grid', gridTemplateColumns:'300px 1fr', gap:16, alignItems:'start' }}>
+        <div className="cal-layout">
           {/* Calendar */}
           <div className="card" style={{ padding:0, overflow:'hidden' }}>
             <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', padding:'14px 16px', borderBottom:'1px solid var(--border-1)' }}>
